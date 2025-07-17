@@ -1,1 +1,1 @@
-# SwipeEat
+# SwipEat
