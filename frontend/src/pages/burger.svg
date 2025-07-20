@@ -1,0 +1,9 @@
+<!-- public/burger.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" viewBox="0 0 24 24">
+  <path fill="#F4A261" d="M2 9a10 10 0 0120 0H2z"/>
+  <path fill="#E76F51" d="M2 12h20v3H2z"/>
+  <path fill="#2A9D8F" d="M4 10h16v2H4z"/>
+  <circle cx="6" cy="6" r="1" fill="#FFF"/>
+  <circle cx="10" cy="5" r="1" fill="#FFF"/>
+  <circle cx="14" cy="6" r="1" fill="#FFF"/>
+</svg>

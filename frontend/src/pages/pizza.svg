@@ -1,0 +1,7 @@
+<!-- public/pizza.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" viewBox="0 0 24 24">
+  <path fill="#F4A261" d="M3 2l18 18-8.5 1.5L3 2z"/>
+  <path fill="#E9C46A" d="M4 3l6 6-1.5 1.5L2.5 4.5 4 3z"/>
+  <circle cx="7" cy="5" r="1" fill="#E76F51"/>
+  <circle cx="10" cy="8" r="1" fill="#2A9D8F"/>
+</svg>

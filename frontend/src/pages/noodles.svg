@@ -1,0 +1,6 @@
+<!-- public/noodles.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="none" viewBox="0 0 24 24">
+  <path fill="#E9C46A" d="M4 14h16l-2 5H6l-2-5z"/>
+  <path stroke="#E76F51" stroke-width="1.5" d="M12 4v8M9 4v8M15 4v8"/>
+  <circle cx="12" cy="17" r="1" fill="#2A9D8F"/>
+</svg>
