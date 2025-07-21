@@ -12,24 +12,48 @@ const LoginModal = ({ onClose, onLoginSuccess }) => {
 
   const handleChange = e => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', {
-        email: formData.email,
-        password: formData.password,
-      });
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
+  
+  try {
+    console.log('Attempting login with:', formData); // Debug log
+    
+    const res = await axios.post('http://localhost:5000/api/auth/login', {
+      email: formData.email.trim(),
+      password: formData.password,
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Login response:', res.data); // Debug log
+    
+    if (res.data?.token) {
+      localStorage.setItem('token', res.data.token);
       onLoginSuccess(res.data);
       onClose();
-    } catch (err) {
-      setError(err.response?.data?.msg || err.response?.data?.message || 'Invalid credentials');
-    } finally {
-      setLoading(false);
+    } else {
+      throw new Error('Authentication failed: No token received');
     }
-  };
-
+  } catch (err) {
+    console.error('Full error details:', {
+      message: err.message,
+      response: err.response?.data,
+      config: err.config
+    });
+    
+    setError(
+      err.response?.data?.message || 
+      err.response?.data?.error || 
+      'Login failed. Please check your credentials.'
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
       <Typography variant="h5" mb={2} fontWeight={700}>Sign In</Typography>

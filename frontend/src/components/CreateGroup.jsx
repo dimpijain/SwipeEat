@@ -1,52 +1,101 @@
-import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Alert } from '@mui/material';
+import { useState } from 'react';
 import axios from 'axios';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  Checkbox,
+  ListItemText,
+  OutlinedInput,
+} from '@mui/material';
 
-const CreateGroup = ({ token }) => {
+const cuisinesList = ['Indian', 'Chinese', 'Italian', 'Mexican', 'Thai'];
+
+export default function CreateGroup({ open, onClose }) {
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [budget, setBudget] = useState('Medium');
+  const [location, setLocation] = useState('');
+  const [cuisines, setCuisines] = useState([]);
 
-  const handleCreate = async () => {
-    setError('');
-    setSuccess(null);
-    setLoading(true);
+  const handleSubmit = async () => {
     try {
-      const res = await axios.post('/api/groups/create', { name }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSuccess(`Group created! Invite code: ${res.data.group.code}`);
-      setName('');
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        'http://localhost:5000/api/groups/create',
+        {
+          name,
+          preferences: {
+            budget,
+            cuisine: cuisines,
+            location,
+          },
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log(res.data);
+      onClose(); // close modal on success
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create group');
-    } finally {
-      setLoading(false);
+      console.error(err);
+      alert('Error creating group');
     }
   };
 
   return (
-    <Box sx={{ maxWidth: 400, mx: 'auto', mt: 4 }}>
-      <Typography variant="h6" mb={2}>Create a Group</Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-      <TextField
-        label="Group Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        fullWidth
-        sx={{ mb: 2 }}
-      />
-      <Button
-        variant="contained"
-        onClick={handleCreate}
-        disabled={!name || loading}
-        fullWidth
-      >
-        {loading ? 'Creating...' : 'Create Group'}
-      </Button>
-    </Box>
-  );
-};
+    <Dialog open={open} onClose={onClose} fullWidth>
+      <DialogTitle className="text-[#536293] font-bold text-xl">Create a New Group</DialogTitle>
+      <DialogContent className="flex flex-col gap-4 py-4">
+        <TextField label="Group Name" value={name} onChange={e => setName(e.target.value)} />
+        <FormControl>
+          <InputLabel>Budget</InputLabel>
+          <Select value={budget} onChange={e => setBudget(e.target.value)} label="Budget">
+            <MenuItem value="Low">Low</MenuItem>
+            <MenuItem value="Medium">Medium</MenuItem>
+            <MenuItem value="High">High</MenuItem>
+          </Select>
+        </FormControl>
 
-export default CreateGroup;
+        <FormControl>
+          <InputLabel>Cuisine Preferences</InputLabel>
+          <Select
+            multiple
+            value={cuisines}
+            onChange={e => setCuisines(e.target.value)}
+            input={<OutlinedInput label="Cuisines" />}
+            renderValue={selected => selected.join(', ')}
+          >
+            {cuisinesList.map(cuisine => (
+              <MenuItem key={cuisine} value={cuisine}>
+                <Checkbox checked={cuisines.indexOf(cuisine) > -1} />
+                <ListItemText primary={cuisine} />
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <TextField
+          label="Location"
+          value={location}
+          onChange={e => setLocation(e.target.value)}
+        />
+      </DialogContent>
+
+      <DialogActions className="px-6 pb-4">
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" className="bg-[#ACBD6B] text-white" onClick={handleSubmit}>
+          Create
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}

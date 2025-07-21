@@ -1,109 +1,202 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Grid, Paper, Button, Divider } from '@mui/material';
+import {
+  Box,
+  Typography,
+  Grid,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  Button,
+  useTheme
+} from '@mui/material';
 import CreateGroup from '../components/CreateGroup';
 import JoinGroup from '../components/JoinGroup';
 import axios from 'axios';
 
-const COLORS = {
-  primary: '#FF8A80', // soft coral
-  secondary: '#FFD180', // pastel orange
-  bgLight: '#FFF3E0', // light cream
-  textDark: '#4E342E', // dark brown
-  cardBg: '#FFEBEE', // very light coral
-};
-
-const Dashboard = ({ token }) => {
+const useGroups = (token, refreshFlag) => {
   const [groups, setGroups] = useState([]);
-  const [refreshGroups, setRefreshGroups] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchGroups = async () => {
+      setLoading(true);
       try {
         const res = await axios.get('/api/groups/my', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setGroups(res.data.groups);
+        setGroups(res.data.groups || []);
       } catch (err) {
-        console.error('Failed to fetch groups:', err);
+        setError(err.message);
+        setGroups([]);
+      } finally {
+        setLoading(false);
       }
     };
     fetchGroups();
-  }, [token, refreshGroups]);
+  }, [token, refreshFlag]);
 
-  // Refresh groups list after creating/joining
-  const onGroupChange = () => setRefreshGroups((prev) => !prev);
+  return { groups, loading, error };
+};
 
-  return (
-    <Box
+const COLORS = {
+  primary: '#FF7F7F',
+  secondary: '#FFD6B0',
+  background: '#FFF9FA',
+  textPrimary: '#575761',
+  cardBackground: '#FFF5F8',
+  sidebarBackground: '#FFEDE7',
+  accent: '#B5EAD7'
+};
+
+const Sidebar = ({ username, onLogout }) => (
+  <Box
+    sx={{
+      width: 260,
+      bgcolor: COLORS.sidebarBackground,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      px: 4,
+      py: 6,
+      borderRight: `2px solid ${COLORS.cardBackground}`,
+    }}
+  >
+    <Box>
+      <Typography
+        variant="h4"
+        fontWeight={800}
+        color={COLORS.primary}
+        sx={{ fontFamily: "'Pacifico', cursive", mb: 4 }}
+      >
+        SwipeEat
+      </Typography>
+      <Typography variant="h6" fontWeight={600} color={COLORS.textPrimary}>
+        Welcome,
+      </Typography>
+      <Typography variant="h5" fontWeight={700} color={COLORS.primary}>
+        {username || 'User'}
+      </Typography>
+    </Box>
+    <Button
+      variant="contained"
+      color="error"
+      fullWidth
+      onClick={onLogout}
       sx={{
-        minHeight: '100vh',
-        bgcolor: COLORS.bgLight,
-        p: { xs: 3, md: 6 },
+        fontWeight: 700,
+        py: 1.5,
+        borderRadius: 3,
       }}
     >
-      <Typography
-        variant="h3"
-        fontWeight={700}
-        color={COLORS.primary}
-        align="center"
-        gutterBottom
-        sx={{ fontFamily: "'Comic Sans MS', cursive, sans-serif" }}
-      >
-        Your Groups
-      </Typography>
+      Logout
+    </Button>
+  </Box>
+);
 
-      {groups.length === 0 ? (
-        <Typography
-          variant="h6"
-          align="center"
-          color={COLORS.textDark}
-          sx={{ mb: 5 }}
-        >
-          You have not joined any groups yet. Start by creating or joining one below!
+const GroupCard = ({ group }) => (
+  <Paper
+    elevation={3}
+    sx={{
+      bgcolor: COLORS.cardBackground,
+      p: 4,
+      borderRadius: 6,
+      textAlign: 'center',
+      height: '100%',
+      transition: 'transform 0.25s ease',
+      '&:hover': {
+        transform: 'translateY(-5px)',
+      },
+    }}
+  >
+    <Typography variant="h6" fontWeight={700} color={COLORS.primary}>
+      {group.name}
+    </Typography>
+    <Typography variant="body2" color={COLORS.textPrimary}>
+      Invite Code: <strong>{group.code}</strong>
+    </Typography>
+    <Typography variant="caption" color={COLORS.textPrimary}>
+      Members: {group?.members?.length || 0}
+    </Typography>
+  </Paper>
+);
+
+const EventsPanel = () => (
+  <Box
+    sx={{
+      width: 300,
+      bgcolor: COLORS.cardBackground,
+      p: 4,
+      borderLeft: `1px solid ${COLORS.secondary}`,
+      overflowY: 'auto'
+    }}
+  >
+    <Typography variant="h6" color={COLORS.primary} fontWeight={700} mb={2}>
+      Upcoming Events
+    </Typography>
+    <List>
+      {['Team Lunch', 'Project Meeting', 'Client Dinner'].map((event, index) => (
+        <ListItem key={index} sx={{ py: 1.5 }}>
+          <ListItemText
+            primary={event}
+            secondary={`${['Mon', 'Wed', 'Fri'][index]}, ${['12:00 PM', '2:30 PM', '7:00 PM'][index]}`}
+          />
+        </ListItem>
+      ))}
+    </List>
+  </Box>
+);
+
+const Dashboard = ({ token, username, onLogout }) => {
+  const [refreshGroups, setRefreshGroups] = useState(false);
+  const { groups } = useGroups(token, refreshGroups);
+  const theme = useTheme();
+
+  const handleGroupChange = () => setRefreshGroups(prev => !prev);
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
+      <Sidebar username={username} onLogout={onLogout} />
+
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', px: 4, py: 3 }}>
+        <Typography variant="h4" fontWeight={700} color={COLORS.primary} mb={1}>
+          Hello, {username || 'User'} 👋
         </Typography>
-      ) : (
-        <Grid container spacing={3} justifyContent="center" sx={{ mb: 5 }}>
-          {groups.map((group) => (
-            <Grid item xs={12} sm={6} md={4} key={group._id}>
-              <Paper
-                elevation={3}
-                sx={{
-                  bgcolor: COLORS.cardBg,
-                  p: 3,
-                  borderRadius: 4,
-                  textAlign: 'center',
-                  boxShadow: '0 4px 8px rgba(255, 138, 128, 0.3)',
-                }}
-              >
-                <Typography variant="h5" fontWeight={600} color={COLORS.primary}>
-                  {group.name}
-                </Typography>
-                <Typography variant="body2" color={COLORS.textDark} sx={{ mt: 1 }}>
-                  Invite Code: <strong>{group.code}</strong>
-                </Typography>
-                <Typography
-                  variant="caption"
-                  color={COLORS.textDark}
-                  sx={{ mt: 1, display: 'block' }}
-                >
-                  Members: {group.members.length}
-                </Typography>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-      )}
 
-      <Divider sx={{ mb: 4, bgcolor: COLORS.primary, height: 3, borderRadius: 2 }} />
+        <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
+          Your Groups
+        </Typography>
 
-      <Grid container spacing={4} justifyContent="center">
-        <Grid item xs={12} md={5}>
-          <CreateGroup token={token} onGroupChange={onGroupChange} />
+        {groups.length === 0 ? (
+          <Typography color={COLORS.textPrimary} mb={4}>
+            No groups yet. Create or join one below!
+          </Typography>
+        ) : (
+          <Grid container spacing={3} mb={4}>
+            {groups.map(group => (
+              <Grid item xs={12} sm={6} md={4} key={group._id}>
+                <GroupCard group={group} />
+              </Grid>
+            ))}
+          </Grid>
+        )}
+
+        <Grid container spacing={3} mt={1}>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, borderRadius: 4 }}>
+              <CreateGroup token={token} onGroupChange={handleGroupChange} />
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, borderRadius: 4 }}>
+              <JoinGroup token={token} onGroupChange={handleGroupChange} />
+            </Paper>
+          </Grid>
         </Grid>
-        <Grid item xs={12} md={5}>
-          <JoinGroup token={token} onGroupChange={onGroupChange} />
-        </Grid>
-      </Grid>
+      </Box>
+
+      <EventsPanel />
     </Box>
   );
 };

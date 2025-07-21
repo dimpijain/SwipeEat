@@ -1,160 +1,266 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Grid,
-  Typography,
-  TextField,
-  Button,
-  Alert,
+import { 
+  Box, 
+  Typography, 
+  TextField, 
+  Button, 
+  Paper, 
+  Link,
   CircularProgress,
-  Paper,
+  useTheme,
+  InputAdornment
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { Person, Email, Lock, Restaurant } from '@mui/icons-material';
 
-const Register = () => {
+// Color palette
+const COLORS = {
+  primary: '#FF7F7F',      // Coral
+  secondary: '#FFD6B0',    // Peach
+  background: '#FFF9FA',   // Cream
+  textPrimary: '#575761',  // Dark gray
+  cardBackground: '#FFF5F8', // Light pink
+  success: '#4CAF50'       // Green
+};
+
+// Custom hook for registration logic
+const useRegister = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  const handleRegister = async (formData) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      navigate('/login', { 
+        state: { 
+          registrationSuccess: true,
+          message: 'Registration successful! Please login.' 
+        } 
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { handleRegister, loading, error };
+};
+
+// InputField component
+const InputField = ({ icon, label, type, value, onChange, ...props }) => (
+  <TextField
+    fullWidth
+    variant="outlined"
+    label={label}
+    type={type}
+    value={value}
+    onChange={onChange}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <Box sx={{ color: COLORS.textPrimary }}>
+            {icon}
+          </Box>
+        </InputAdornment>
+      ),
+    }}
+    sx={{
+      mb: 3,
+      '& .MuiOutlinedInput-root': {
+        borderRadius: 2,
+        backgroundColor: COLORS.background,
+      },
+      '& .MuiInputLabel-root': {
+        color: COLORS.textPrimary,
+      },
+    }}
+    {...props}
+  />
+);
+
+// RegistrationForm component
+const RegistrationForm = ({ onRegister, loading, error }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
   });
 
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || 'Registration failed');
-      } else {
-        navigate('/'); // Redirect to login after success
-      }
-    } catch (err) {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    onRegister(formData);
   };
 
   return (
-    <Grid container component="main" sx={{ height: '100vh' }}>
-      {/* Left Side Image */}
-      <Grid
-        item
-        xs={false}
-        sm={6}
-        md={7}
-        sx={{
-          backgroundImage: 'url(https://source.unsplash.com/featured/?food)',
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-
-      {/* Right Side Form */}
-      <Grid
-        item
-        xs={12}
-        sm={6}
-        md={5}
-        component={Paper}
-        elevation={6}
-        square
-      >
-        <Box
-          sx={{
-            my: 8,
-            mx: 6,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+    <Paper
+      elevation={3}
+      sx={{
+        p: 4,
+        borderRadius: 4,
+        maxWidth: 450,
+        width: '100%',
+        bgcolor: 'white',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+      }}
+    >
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Restaurant 
+          sx={{ 
+            fontSize: 50, 
+            color: COLORS.primary,
+            mb: 1
+          }} 
+        />
+        <Typography 
+          variant="h4" 
+          fontWeight={700} 
+          color={COLORS.primary}
+        >
+          Join SwipeEat
+        </Typography>
+        <Typography color={COLORS.textPrimary}>
+          Create your account to start sharing meals
+        </Typography>
+      </Box>
+      
+      {error && (
+        <Typography 
+          color="error" 
+          mb={2} 
+          textAlign="center"
+          sx={{ 
+            backgroundColor: '#FFEBEE',
+            p: 1,
+            borderRadius: 1
           }}
         >
-          <Typography component="h1" variant="h4" fontWeight={700}>
-            Create Account
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
-            Join Swipe Eat to enjoy food with friends 🎉
-          </Typography>
+          {error}
+        </Typography>
+      )}
 
-          <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <form onSubmit={handleSubmit}>
+        <InputField
+          icon={<Person />}
+          label="Full Name"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          required
+        />
+        
+        <InputField
+          icon={<Email />}
+          label="Email Address"
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+        />
+        
+        <InputField
+          icon={<Lock />}
+          label="Password"
+          type="password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          inputProps={{ minLength: 6 }}
+          helperText="At least 6 characters"
+          required
+        />
+        
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          disabled={loading}
+          sx={{
+            py: 1.5,
+            borderRadius: 2,
+            bgcolor: COLORS.primary,
+            fontSize: '1rem',
+            fontWeight: 600,
+            '&:hover': {
+              bgcolor: '#FF6F6F',
+              boxShadow: '0 4px 12px rgba(255, 127, 127, 0.3)',
+            },
+          }}
+        >
+          {loading ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : (
+            'Create Account'
+          )}
+        </Button>
+      </form>
+      
+      <Typography 
+        mt={3} 
+        textAlign="center" 
+        color={COLORS.textPrimary}
+        sx={{ fontSize: '0.9rem' }}
+      >
+        Already have an account?{' '}
+        <Link 
+          href="/login" 
+          color={COLORS.primary}
+          sx={{ 
+            fontWeight: 600,
+            textDecoration: 'none',
+            '&:hover': {
+              textDecoration: 'underline'
+            }
+          }}
+        >
+          Sign in
+        </Link>
+      </Typography>
+    </Paper>
+  );
+};
 
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Full Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-            />
+// Main Register component
+const Register = () => {
+  const { handleRegister, loading, error } = useRegister();
 
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Email Address"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-            />
-
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              label="Password"
-              name="password"
-              type="password"
-              inputProps={{ minLength: 6 }}
-              helperText="At least 6 characters"
-              value={formData.password}
-              onChange={handleChange}
-            />
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Register'}
-            </Button>
-
-            <Typography variant="body2" align="center">
-              Already a user?{' '}
-              <Button
-                onClick={() => navigate('/')}
-                sx={{ textTransform: 'none', fontWeight: 600 }}
-              >
-                Sign In
-              </Button>
-            </Typography>
-          </Box>
-        </Box>
-      </Grid>
-    </Grid>
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.cardBackground} 100%)`,
+        p: 2,
+      }}
+    >
+      <RegistrationForm 
+        onRegister={handleRegister} 
+        loading={loading} 
+        error={error} 
+      />
+    </Box>
   );
 };
 
