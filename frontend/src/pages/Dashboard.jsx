@@ -11,9 +11,11 @@ import {
   Card,
   CardContent,
   CardActions,
+  TextField
 } from '@mui/material';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import CreateGroup from '../components/CreateGroup';
-import JoinGroup from '../components/JoinGroup';
 import axios from 'axios';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import FastfoodIcon from '@mui/icons-material/Fastfood';
@@ -158,6 +160,62 @@ const EventsPanel = () => (
   </Box>
 );
 
+const JoinGroupButton = ({ token, onGroupChange }) => {
+  const [inviteCode, setInviteCode] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleJoinGroup = async () => {
+    if (!inviteCode) {
+      toast.error('Please enter an invite code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        '/api/groups/join',
+        { code: inviteCode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success(response.data.message || 'Joined group successfully!');
+      onGroupChange();
+      setInviteCode('');
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to join group';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Box sx={{ width: '100%' }}>
+      <TextField
+        fullWidth
+        label="Invite Code"
+        value={inviteCode}
+        onChange={(e) => setInviteCode(e.target.value)}
+        margin="normal"
+      />
+      <Button
+        fullWidth
+        variant="contained"
+        onClick={handleJoinGroup}
+        disabled={loading}
+        sx={{
+          mt: 2,
+          bgcolor: COLORS.primary,
+          '&:hover': { bgcolor: COLORS.primary },
+          py: 1.5,
+          borderRadius: 2
+        }}
+      >
+        {loading ? 'Joining...' : 'Join Group'}
+      </Button>
+    </Box>
+  );
+};
 
 const Dashboard = () => {
   const [refreshGroups, setRefreshGroups] = useState(false);
@@ -190,11 +248,11 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-const handleGroupChange = () => setRefreshGroups(prev => !prev);
-
+  const handleGroupChange = () => setRefreshGroups(prev => !prev);
 
   return (
-     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
+      <ToastContainer position="top-right" autoClose={3000} />
       <Sidebar username={username} onLogout={handleLogout} />
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', px: 4, py: 3 }}>
@@ -280,7 +338,7 @@ const handleGroupChange = () => setRefreshGroups(prev => !prev);
                 </Typography>
               </CardContent>
               <CardActions sx={{ p: 2 }}>
-                <JoinGroup token={token} onGroupChange={handleGroupChange} />
+                <JoinGroupButton token={token} onGroupChange={handleGroupChange} />
               </CardActions>
             </Card>
           </Grid>

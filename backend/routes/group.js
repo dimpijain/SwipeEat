@@ -3,9 +3,9 @@ const { createGroup } = require('../controllers/groupController');
 
 const router = express.Router();
 
-router.post('/create', createGroup);
+router.post('group/create', createGroup);
 const { joinGroup } = require('../controllers/groupController');
-router.post('/join', joinGroup);
+router.post('group/join', joinGroup);
 
 
 module.exports = router; 

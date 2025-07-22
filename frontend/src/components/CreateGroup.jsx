@@ -27,7 +27,7 @@ export default function CreateGroup({ open, onClose, token, onGroupChange }) {
   const handleSubmit = async () => {
     try {
       const res = await axios.post(
-        '/api/groups/create',
+        'http://localhost:5000/api/group/create',
         {
           name,
           preferences: {

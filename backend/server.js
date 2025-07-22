@@ -6,7 +6,10 @@ const cors = require('cors');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Your frontend URL
+  credentials: true
+}));
 app.use(express.json());
 
 // MongoDB connection
@@ -23,7 +26,7 @@ const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
 const groupRoutes = require('./routes/group');
-app.use('/api/group', groupRoutes);
+app.use('/api', groupRoutes);
 
 
 const PORT = process.env.PORT || 5000;
