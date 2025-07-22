@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_should_be_strong';
+const JWT_SECRET = process.env.JWT_SECRET ;
 
 // Input validation middleware
 const validateLoginInput = (req, res, next) => {
@@ -18,18 +18,44 @@ const validateLoginInput = (req, res, next) => {
   next();
 };
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: "Missing credentials" });
+// Login route
+router.post('/login', validateLoginInput, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ error: "User not found" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(400).json({ error: "Incorrect password" });
+    const token = jwt.sign(
+      {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      },
+      JWT_SECRET,
+      { expiresIn: '1d' }
+    );
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
-  res.status(200).json({ token, user: { name: user.name, email: user.email } });
+    res.status(200).json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error during login' });
+  }
 });
 
 // Signup route
@@ -62,9 +88,13 @@ router.post('/register', async (req, res) => {
 
     // Create token
     const token = jwt.sign(
-      { id: newUser._id, email: newUser.email },
+      {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email
+      },
       JWT_SECRET,
-      { expiresIn: '3d' }
+      { expiresIn: '1d' }
     );
 
     res.status(201).json({

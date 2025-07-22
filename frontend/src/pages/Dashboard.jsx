@@ -8,11 +8,17 @@ import {
   ListItem,
   ListItemText,
   Button,
-  useTheme
+  Card,
+  CardContent,
+  CardActions,
 } from '@mui/material';
 import CreateGroup from '../components/CreateGroup';
 import JoinGroup from '../components/JoinGroup';
 import axios from 'axios';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
+import FastfoodIcon from '@mui/icons-material/Fastfood';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
 
 const useGroups = (token, refreshFlag) => {
   const [groups, setGroups] = useState([]);
@@ -64,14 +70,18 @@ const Sidebar = ({ username, onLogout }) => (
     }}
   >
     <Box>
-      <Typography
-        variant="h4"
-        fontWeight={800}
-        color={COLORS.primary}
-        sx={{ fontFamily: "'Pacifico', cursive", mb: 4 }}
-      >
-        SwipeEat
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+        <FastfoodIcon sx={{ color: COLORS.primary, fontSize: 36, mr: 1 }} />
+        <Typography
+          variant="h4"
+          fontWeight={800}
+          color={COLORS.primary}
+          sx={{ fontFamily: "'Pacifico', cursive" }}
+        >
+          SwipeEat
+        </Typography>
+        <RestaurantIcon sx={{ color: COLORS.primary, fontSize: 36, ml: 1 }} />
+      </Box>
       <Typography variant="h6" fontWeight={600} color={COLORS.textPrimary}>
         Welcome,
       </Typography>
@@ -148,20 +158,48 @@ const EventsPanel = () => (
   </Box>
 );
 
-const Dashboard = ({ token, username, onLogout }) => {
-  const [refreshGroups, setRefreshGroups] = useState(false);
-  const { groups } = useGroups(token, refreshGroups);
-  const theme = useTheme();
 
-  const handleGroupChange = () => setRefreshGroups(prev => !prev);
+const Dashboard = () => {
+  const [refreshGroups, setRefreshGroups] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [username, setUsername] = useState('');
+  const [token, setToken] = useState('');
+  const navigate = useNavigate();
+  
+  const { groups } = useGroups(token, refreshGroups);
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    if (!storedToken) {
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      const decoded = jwtDecode(storedToken);
+      setUsername(decoded.name || 'User');
+      setToken(storedToken);
+    } catch (error) {
+      console.error('Invalid token:', error);
+      handleLogout();
+    }
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+const handleGroupChange = () => setRefreshGroups(prev => !prev);
+
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
-      <Sidebar username={username} onLogout={onLogout} />
+     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
+      <Sidebar username={username} onLogout={handleLogout} />
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', px: 4, py: 3 }}>
         <Typography variant="h4" fontWeight={700} color={COLORS.primary} mb={1}>
-          Hello, {username || 'User'} 👋
+          Hello, {username} 👋
         </Typography>
 
         <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
@@ -182,21 +220,81 @@ const Dashboard = ({ token, username, onLogout }) => {
           </Grid>
         )}
 
-        <Grid container spacing={3} mt={1}>
+        <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
+          Group Actions
+        </Typography>
+
+        <Grid container spacing={3}>
+          {/* Create Group Card */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, borderRadius: 4 }}>
-              <CreateGroup token={token} onGroupChange={handleGroupChange} />
-            </Paper>
+            <Card sx={{ 
+              bgcolor: COLORS.cardBackground,
+              borderRadius: 4,
+              boxShadow: 3,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
+                  Create New Group
+                </Typography>
+                <Typography variant="body2" color={COLORS.textPrimary}>
+                  Start a new food group with your preferences
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ p: 2 }}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={() => setCreateGroupOpen(true)}
+                  sx={{
+                    bgcolor: COLORS.primary,
+                    '&:hover': { bgcolor: COLORS.primary },
+                    py: 1.5,
+                    borderRadius: 2
+                  }}
+                >
+                  Create Group
+                </Button>
+              </CardActions>
+            </Card>
           </Grid>
+
+          {/* Join Group Card */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, borderRadius: 4 }}>
-              <JoinGroup token={token} onGroupChange={handleGroupChange} />
-            </Paper>
+            <Card sx={{ 
+              bgcolor: COLORS.cardBackground,
+              borderRadius: 4,
+              boxShadow: 3,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
+                  Join Existing Group
+                </Typography>
+                <Typography variant="body2" color={COLORS.textPrimary}>
+                  Enter an invite code to join your friends' group
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ p: 2 }}>
+                <JoinGroup token={token} onGroupChange={handleGroupChange} />
+              </CardActions>
+            </Card>
           </Grid>
         </Grid>
       </Box>
 
       <EventsPanel />
+
+      <CreateGroup 
+        open={createGroupOpen} 
+        onClose={() => setCreateGroupOpen(false)}
+        token={token} 
+        onGroupChange={handleGroupChange} 
+      />
     </Box>
   );
 };

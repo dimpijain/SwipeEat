@@ -16,8 +16,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import SwipeIcon from '@mui/icons-material/SwipeRight';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import SignInModal from '../components/SignInModal';
-  // Import Register modal here
+import { useNavigate } from 'react-router-dom';
 import LoginModal from '../components/LoginModal';
 const COLORS = {
   primary: '#FF6F61',
@@ -68,7 +67,7 @@ const Homepage = () => {
       color: COLORS.secondary,
     },
   ];
-
+  const navigate = useNavigate();
   return (
     <Box sx={{ backgroundColor: COLORS.bgLight, minHeight: '100vh', py: { xs: 6, md: 10 } }}>
       <Container maxWidth="lg">
@@ -110,21 +109,21 @@ const Homepage = () => {
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
             {/* Open Register Modal instead of routing */}
-            <Button
-              variant="contained"
-              onClick={() => setIsRegisterOpen(true)}
-              sx={{
-                backgroundColor: COLORS.primary,
-                color: 'white',
-                fontWeight: 700,
-                fontSize: '1.15rem',
-                px: 5,
-                py: 1.8,
-                borderRadius: 3,
-              }}
-            >
-              Get Started
-            </Button>
+           <Button
+  variant="contained"
+  onClick={() => navigate("/register")}
+  sx={{
+    backgroundColor: COLORS.primary,
+    color: 'white',
+    fontWeight: 700,
+    fontSize: '1.15rem',
+    px: 5,
+    py: 1.8,
+    borderRadius: 3,
+  }}
+>
+  Get Started
+</Button>
             <Button
               variant="outlined"
               onClick={() => setIsSignInOpen(true)}

@@ -18,7 +18,7 @@ import {
 
 const cuisinesList = ['Indian', 'Chinese', 'Italian', 'Mexican', 'Thai'];
 
-export default function CreateGroup({ open, onClose }) {
+export default function CreateGroup({ open, onClose, token, onGroupChange }) {
   const [name, setName] = useState('');
   const [budget, setBudget] = useState('Medium');
   const [location, setLocation] = useState('');
@@ -26,9 +26,8 @@ export default function CreateGroup({ open, onClose }) {
 
   const handleSubmit = async () => {
     try {
-      const token = localStorage.getItem('token');
       const res = await axios.post(
-        'http://localhost:5000/api/groups/create',
+        '/api/groups/create',
         {
           name,
           preferences: {
@@ -43,8 +42,8 @@ export default function CreateGroup({ open, onClose }) {
           },
         }
       );
-      console.log(res.data);
-      onClose(); // close modal on success
+      onGroupChange(); // Refresh groups list
+      onClose(); // Close modal
     } catch (err) {
       console.error(err);
       alert('Error creating group');
@@ -53,10 +52,19 @@ export default function CreateGroup({ open, onClose }) {
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth>
-      <DialogTitle className="text-[#536293] font-bold text-xl">Create a New Group</DialogTitle>
-      <DialogContent className="flex flex-col gap-4 py-4">
-        <TextField label="Group Name" value={name} onChange={e => setName(e.target.value)} />
-        <FormControl>
+      <DialogTitle sx={{ color: '#536293', fontWeight: 'bold', fontSize: '1.25rem' }}>
+        Create a New Group
+      </DialogTitle>
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, py: 2 }}>
+        <TextField 
+          label="Group Name" 
+          value={name} 
+          onChange={e => setName(e.target.value)} 
+          fullWidth
+          margin="normal"
+        />
+        
+        <FormControl fullWidth margin="normal">
           <InputLabel>Budget</InputLabel>
           <Select value={budget} onChange={e => setBudget(e.target.value)} label="Budget">
             <MenuItem value="Low">Low</MenuItem>
@@ -65,7 +73,7 @@ export default function CreateGroup({ open, onClose }) {
           </Select>
         </FormControl>
 
-        <FormControl>
+        <FormControl fullWidth margin="normal">
           <InputLabel>Cuisine Preferences</InputLabel>
           <Select
             multiple
@@ -87,12 +95,18 @@ export default function CreateGroup({ open, onClose }) {
           label="Location"
           value={location}
           onChange={e => setLocation(e.target.value)}
+          fullWidth
+          margin="normal"
         />
       </DialogContent>
 
-      <DialogActions className="px-6 pb-4">
+      <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" className="bg-[#ACBD6B] text-white" onClick={handleSubmit}>
+        <Button 
+          variant="contained" 
+          sx={{ backgroundColor: '#ACBD6B', color: 'white' }} 
+          onClick={handleSubmit}
+        >
           Create
         </Button>
       </DialogActions>
