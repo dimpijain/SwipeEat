@@ -11,10 +11,11 @@ import {
   TextField,
   CircularProgress,
   IconButton,
-  Divider
+  Divider,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { List, ListItem, ListItemText } from '@mui/material';
-
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CreateGroup from '../components/CreateGroup';
@@ -297,6 +298,7 @@ const Dashboard = () => {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [token, setToken] = useState('');
+  const [activeTab, setActiveTab] = useState('myGroups');
   const navigate = useNavigate();
   
   const { createdGroups, joinedGroups, loading, refetch } = useGroups(token, refreshGroups);
@@ -383,125 +385,150 @@ const Dashboard = () => {
           Hello, {username} 👋
         </Typography>
 
-        {/* Created Groups Section */}
-        <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
-          Your Created Groups
-        </Typography>
+        {/* Tab navigation */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+          <Tabs 
+            value={activeTab} 
+            onChange={(e, newValue) => setActiveTab(newValue)}
+            indicatorColor="primary"
+            textColor="primary"
+          >
+            <Tab label="My Groups" value="myGroups" />
+            <Tab label="Joined Groups" value="joinedGroups" />
+          </Tabs>
+        </Box>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-            <CircularProgress size={60} sx={{ color: COLORS.primary }} />
-          </Box>
-        ) : createdGroups.length === 0 ? (
-          <Typography color={COLORS.textPrimary} mb={4}>
-            You haven't created any groups yet
-          </Typography>
-        ) : (
-          <Grid container spacing={3} mb={4}>
-            {createdGroups.map(group => (
-              <Grid item xs={12} sm={6} md={4} key={group._id}>
-                <GroupCard 
-                  group={group}
-                  isOwner={true}
-                  onDelete={handleDeleteGroup}
-                />
+        {/* My Groups Tab */}
+        {activeTab === 'myGroups' && (
+          <Box>
+            <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
+              Your Created Groups
+            </Typography>
+
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                <CircularProgress size={60} sx={{ color: COLORS.primary }} />
+              </Box>
+            ) : createdGroups.length === 0 ? (
+              <Typography color={COLORS.textPrimary} mb={4}>
+                You haven't created any groups yet
+              </Typography>
+            ) : (
+              <Grid container spacing={3} mb={4}>
+                {createdGroups.map(group => (
+                  <Grid item xs={12} sm={6} md={4} key={group._id}>
+                    <GroupCard 
+                      group={group}
+                      isOwner={true}
+                      onDelete={handleDeleteGroup}
+                    />
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
+            )}
+
+            <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
+              Group Actions
+            </Typography>
+
+            <Grid container spacing={3} mb={4}>
+              <Grid item xs={12} md={6}>
+                <Card sx={{ 
+                  bgcolor: COLORS.cardBackground,
+                  borderRadius: 4,
+                  boxShadow: 3,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
+                      Create New Group
+                    </Typography>
+                    <Typography variant="body2" color={COLORS.textPrimary}>
+                      Start a new food group with your preferences
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ p: 2 }}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      onClick={() => setCreateGroupOpen(true)}
+                      sx={{
+                        bgcolor: COLORS.primary,
+                        '&:hover': { bgcolor: COLORS.primary },
+                        py: 1.5,
+                        borderRadius: 2
+                      }}
+                    >
+                      Create Group
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
         )}
 
-        {/* Joined Groups Section */}
-        <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
-          Groups You've Joined
-        </Typography>
+        {/* Joined Groups Tab */}
+        {activeTab === 'joinedGroups' && (
+          <Box>
+            <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
+              Groups You've Joined
+            </Typography>
 
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-            <CircularProgress size={60} sx={{ color: COLORS.primary }} />
-          </Box>
-        ) : joinedGroups.length === 0 ? (
-          <Typography color={COLORS.textPrimary} mb={4}>
-            You haven't joined any groups yet
-          </Typography>
-        ) : (
-          <Grid container spacing={3} mb={4}>
-            {joinedGroups.map(group => (
-              <Grid item xs={12} sm={6} md={4} key={group._id}>
-                <GroupCard 
-                  group={group}
-                  isOwner={false}
-                  onLeave={handleLeaveGroup}
-                />
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                <CircularProgress size={60} sx={{ color: COLORS.primary }} />
+              </Box>
+            ) : joinedGroups.length === 0 ? (
+              <Typography color={COLORS.textPrimary} mb={4}>
+                You haven't joined any groups yet
+              </Typography>
+            ) : (
+              <Grid container spacing={3} mb={4}>
+                {joinedGroups.map(group => (
+                  <Grid item xs={12} sm={6} md={4} key={group._id}>
+                    <GroupCard 
+                      group={group}
+                      isOwner={false}
+                      onLeave={handleLeaveGroup}
+                    />
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
+            )}
+
+            <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
+              Group Actions
+            </Typography>
+
+            <Grid container spacing={3} mb={4}>
+              <Grid item xs={12} md={6}>
+                <Card sx={{ 
+                  bgcolor: COLORS.cardBackground,
+                  borderRadius: 4,
+                  boxShadow: 3,
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
+                      Join Existing Group
+                    </Typography>
+                    <Typography variant="body2" color={COLORS.textPrimary}>
+                      Enter an invite code to join your friends' group
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ p: 2 }}>
+                    <JoinGroupButton token={token} onGroupChange={handleGroupChange} />
+                  </CardActions>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
         )}
-
-        <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
-          Group Actions
-        </Typography>
-
-        <Grid container spacing={3}>
-          {/* Create Group Card */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ 
-              bgcolor: COLORS.cardBackground,
-              borderRadius: 4,
-              boxShadow: 3,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
-                  Create New Group
-                </Typography>
-                <Typography variant="body2" color={COLORS.textPrimary}>
-                  Start a new food group with your preferences
-                </Typography>
-              </CardContent>
-              <CardActions sx={{ p: 2 }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={() => setCreateGroupOpen(true)}
-                  sx={{
-                    bgcolor: COLORS.primary,
-                    '&:hover': { bgcolor: COLORS.primary },
-                    py: 1.5,
-                    borderRadius: 2
-                  }}
-                >
-                  Create Group
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-
-          {/* Join Group Card */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ 
-              bgcolor: COLORS.cardBackground,
-              borderRadius: 4,
-              boxShadow: 3,
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
-                  Join Existing Group
-                </Typography>
-                <Typography variant="body2" color={COLORS.textPrimary}>
-                  Enter an invite code to join your friends' group
-                </Typography>
-              </CardContent>
-              <CardActions sx={{ p: 2 }}>
-                <JoinGroupButton token={token} onGroupChange={handleGroupChange} />
-              </CardActions>
-            </Card>
-          </Grid>
-        </Grid>
       </Box>
 
       <EventsPanel />
