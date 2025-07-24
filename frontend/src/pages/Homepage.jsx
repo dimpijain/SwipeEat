@@ -11,13 +11,17 @@ import {
   Modal,
   Backdrop,
   Fade,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import GroupIcon from '@mui/icons-material/Group';
 import SwipeIcon from '@mui/icons-material/SwipeRight';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
 import { useNavigate } from 'react-router-dom';
 import LoginModal from '../components/LoginModal';
+
 const COLORS = {
   primary: '#FF6F61',
   accent: '#6BFFB8',
@@ -26,6 +30,29 @@ const COLORS = {
   textDark: '#3D3D3D',
   cardBg: '#FFE8E4',
 };
+
+// Enhanced Logo Component
+const Logo = () => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+    <RestaurantIcon sx={{ 
+      color: COLORS.primary, 
+      fontSize: 34,
+      transform: 'rotate(-15deg)' 
+    }} />
+    <Typography
+      variant="h4"
+      sx={{
+        fontWeight: 800,
+        background: `linear-gradient(45deg, ${COLORS.primary}, ${COLORS.secondary})`,
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        fontSize: { xs: '1.8rem', md: '2.2rem' },
+      }}
+    >
+      SwipeEat
+    </Typography>
+  </Box>
+);
 
 const Homepage = () => {
   const [isSignInOpen, setIsSignInOpen] = useState(false);
@@ -60,27 +87,39 @@ const Homepage = () => {
       description: 'Find great places near you.',
       color: COLORS.accent,
     },
-    {
-      icon: <EmojiEventsIcon sx={{ color: COLORS.primary, fontSize: 40 }} />,
-      title: 'Find Matches',
-      description: 'Get matched with restaurants everyone likes!',
-      color: COLORS.secondary,
-    },
   ];
+  
   const navigate = useNavigate();
+  
   return (
-    <Box sx={{ backgroundColor: COLORS.bgLight, minHeight: '100vh', py: { xs: 6, md: 10 } }}>
-      <Container maxWidth="lg">
-        {/* Hero */}
+    <Box sx={{ backgroundColor: COLORS.bgLight, minHeight: '100vh' }}>
+      {/* Header with Left-Aligned Logo */}
+      <AppBar 
+        position="static" 
+        elevation={0} 
+        sx={{ 
+          backgroundColor: 'transparent',
+          py: 3,
+          px: { xs: 3, md: 6 },
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'flex-start', px: 0 }}>
+          <Logo />
+        </Toolbar>
+      </AppBar>
+
+      {/* Adjusted Hero Section with less top padding */}
+      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
         <Box
           sx={{
             textAlign: 'center',
-            py: { xs: 6, md: 10 },
+            py: { xs: 4, md: 6 },
             px: { xs: 3, md: 8 },
             backgroundColor: 'white',
             borderRadius: 4,
             boxShadow: '0 10px 30px rgba(255,111,97,0.15)',
             mb: 8,
+            mt: 4,
           }}
         >
           <Typography
@@ -90,9 +129,10 @@ const Homepage = () => {
               color: COLORS.primary,
               mb: 2,
               fontSize: { xs: '2.4rem', md: '3.6rem' },
+              lineHeight: 1.2,
             }}
           >
-            Never Argue About Dinner Again
+            No More 'Where to eat?'
           </Typography>
           <Typography
             variant="h5"
@@ -107,23 +147,33 @@ const Homepage = () => {
           >
             Swipe. Match. Eat. The easiest way to choose a restaurant with your friends.
           </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, flexWrap: 'wrap' }}>
-            {/* Open Register Modal instead of routing */}
-           <Button
-  variant="contained"
-  onClick={() => navigate("/register")}
-  sx={{
-    backgroundColor: COLORS.primary,
-    color: 'white',
-    fontWeight: 700,
-    fontSize: '1.15rem',
-    px: 5,
-    py: 1.8,
-    borderRadius: 3,
-  }}
->
-  Get Started
-</Button>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: 3, 
+            flexWrap: 'wrap',
+            mt: 4 
+          }}>
+            <Button
+              variant="contained"
+              onClick={() => navigate("/register")}
+              sx={{
+                backgroundColor: COLORS.primary,
+                color: 'white',
+                fontWeight: 700,
+                fontSize: '1.15rem',
+                px: 5,
+                py: 1.8,
+                borderRadius: 3,
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 6px 12px ${COLORS.primary}80`,
+                },
+                transition: 'all 0.3s ease',
+              }}
+            >
+              Get Started
+            </Button>
             <Button
               variant="outlined"
               onClick={() => setIsSignInOpen(true)}
@@ -135,6 +185,11 @@ const Homepage = () => {
                 px: 5,
                 py: 1.8,
                 borderRadius: 3,
+                '&:hover': {
+                  backgroundColor: `${COLORS.primary}10`,
+                  transform: 'translateY(-2px)',
+                },
+                transition: 'all 0.3s ease',
               }}
             >
               Sign In
@@ -142,17 +197,22 @@ const Homepage = () => {
           </Box>
         </Box>
 
-        {/* Features */}
+        {/* Features Section */}
         <Typography
           variant="h4"
           align="center"
-          sx={{ mb: 6, fontWeight: 700, color: COLORS.textDark }}
+          sx={{ 
+            mb: 6, 
+            fontWeight: 700, 
+            color: COLORS.textDark,
+            fontSize: { xs: '1.8rem', md: '2.2rem' } 
+          }}
         >
           How It Works
         </Typography>
         <Grid container spacing={4} justifyContent="center">
           {features.map((feature, i) => (
-            <Grid item xs={12} sm={6} md={3} key={i}>
+            <Grid item xs={12} sm={6} md={4} key={i}>
               <Card
                 sx={{
                   p: 3,
@@ -160,6 +220,11 @@ const Homepage = () => {
                   backgroundColor: COLORS.cardBg,
                   boxShadow: `0 8px 15px ${COLORS.primary}33`,
                   textAlign: 'center',
+                  height: '100%',
+                  transition: 'transform 0.3s',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                  }
                 }}
               >
                 <Avatar
@@ -186,7 +251,7 @@ const Homepage = () => {
           ))}
         </Grid>
 
-        {/* CTA */}
+        {/* CTA Section */}
         <Box
           sx={{
             mt: 10,
@@ -210,6 +275,11 @@ const Homepage = () => {
               px: 6,
               py: 1.8,
               borderRadius: 3,
+              '&:hover': {
+                transform: 'scale(1.05)',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+              },
+              transition: 'all 0.3s ease',
             }}
           >
             Start Swiping Now
@@ -218,9 +288,16 @@ const Homepage = () => {
       </Container>
 
       {/* Footer */}
-      <footer className="text-center py-6 text-[#A0A0A0] text-sm">Made with 🍔 by Dimpi Jain</footer>
+      <Box component="footer" sx={{ 
+        textAlign: 'center', 
+        py: 4,
+        color: '#A0A0A0',
+        fontSize: '0.9rem'
+      }}>
+        Made with 🍔 by Dimpi Jain
+      </Box>
 
-      {/* Sign In Modal */}
+      {/* Modals (unchanged) */}
       <Modal
         open={isSignInOpen}
         onClose={() => setIsSignInOpen(false)}
@@ -235,7 +312,6 @@ const Homepage = () => {
           <Box
             onClick={(e) => e.stopPropagation()}
             sx={{
-              
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
@@ -258,7 +334,6 @@ const Homepage = () => {
         </Fade>
       </Modal>
 
-      {/* Register Modal */}
       <Modal
         open={isRegisterOpen}
         onClose={() => setIsRegisterOpen(false)}
@@ -284,7 +359,6 @@ const Homepage = () => {
               minWidth: 340,
               maxWidth: 400,
               width: '90%'
-              
             }}
           >
             <LoginModal
@@ -300,5 +374,3 @@ const Homepage = () => {
 };
 
 export default Homepage;
-
-

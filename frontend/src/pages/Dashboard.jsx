@@ -4,49 +4,26 @@ import {
   Typography,
   Grid,
   Paper,
-  List,
-  ListItem,
-  ListItemText,
   Button,
   Card,
   CardContent,
   CardActions,
-  TextField
+  TextField,
+  CircularProgress,
+  IconButton,
+  Divider
 } from '@mui/material';
+import { List, ListItem, ListItemText } from '@mui/material';
+
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CreateGroup from '../components/CreateGroup';
 import axios from 'axios';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import FastfoodIcon from '@mui/icons-material/Fastfood';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
-
-const useGroups = (token, refreshFlag) => {
-  const [groups, setGroups] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchGroups = async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get('/api/groups/my', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setGroups(res.data.groups || []);
-      } catch (err) {
-        setError(err.message);
-        setGroups([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchGroups();
-  }, [token, refreshFlag]);
-
-  return { groups, loading, error };
-};
 
 const COLORS = {
   primary: '#FF7F7F',
@@ -56,6 +33,45 @@ const COLORS = {
   cardBackground: '#FFF5F8',
   sidebarBackground: '#FFEDE7',
   accent: '#B5EAD7'
+};
+
+const useGroups = (token, refreshFlag) => {
+  const [createdGroups, setCreatedGroups] = useState([]);
+  const [joinedGroups, setJoinedGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchGroups = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('/api/group/my', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (res.data.success) {
+        setCreatedGroups(res.data.createdGroups || []);
+        setJoinedGroups(res.data.joinedGroups || []);
+      } else {
+        setError(res.data.message || 'Failed to load groups');
+        toast.error(res.data.message || 'Failed to load groups');
+      }
+    } catch (err) {
+      setError(err.message);
+      toast.error(err.response?.data?.message || 'Error loading groups');
+      setCreatedGroups([]);
+      setJoinedGroups([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (token) {
+      fetchGroups();
+    }
+  }, [token, refreshFlag]);
+
+  return { createdGroups, joinedGroups, loading, error, refetch: fetchGroups };
 };
 
 const Sidebar = ({ username, onLogout }) => (
@@ -107,30 +123,59 @@ const Sidebar = ({ username, onLogout }) => (
   </Box>
 );
 
-const GroupCard = ({ group }) => (
+const GroupCard = ({ group, isOwner, onDelete, onLeave }) => (
   <Paper
     elevation={3}
     sx={{
       bgcolor: COLORS.cardBackground,
-      p: 4,
-      borderRadius: 6,
-      textAlign: 'center',
+      p: 3,
+      borderRadius: 3,
       height: '100%',
-      transition: 'transform 0.25s ease',
+      position: 'relative',
+      transition: 'transform 0.2s',
       '&:hover': {
-        transform: 'translateY(-5px)',
-      },
+        transform: 'translateY(-3px)'
+      }
     }}
   >
     <Typography variant="h6" fontWeight={700} color={COLORS.primary}>
       {group.name}
     </Typography>
-    <Typography variant="body2" color={COLORS.textPrimary}>
-      Invite Code: <strong>{group.code}</strong>
+    {isOwner && (
+      <Typography variant="body2" color={COLORS.textPrimary} mt={1}>
+        Invite Code: <strong>{group.joinCode}</strong>
+      </Typography>
+    )}
+    <Typography variant="body2" color={COLORS.textPrimary} mt={1}>
+      {group.members?.length || 0} members
     </Typography>
-    <Typography variant="caption" color={COLORS.textPrimary}>
-      Members: {group?.members?.length || 0}
+    <Typography variant="caption" color={COLORS.textPrimary} mt={2} display="block">
+      {isOwner 
+        ? `Created: ${new Date(group.createdAt).toLocaleDateString()}`
+        : `Joined: ${new Date(group.joinDate).toLocaleDateString()}`}
     </Typography>
+    
+    <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
+      {isOwner ? (
+        <IconButton 
+          onClick={() => onDelete(group._id)}
+          color="error"
+          size="small"
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      ) : (
+        <Button
+          variant="outlined"
+          color="error"
+          size="small"
+          onClick={() => onLeave(group._id)}
+          sx={{ py: 0.5, fontSize: '0.75rem' }}
+        >
+          Leave Group
+        </Button>
+      )}
+    </Box>
   </Paper>
 );
 
@@ -165,25 +210,48 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
   const [loading, setLoading] = useState(false);
 
   const handleJoinGroup = async () => {
-    if (!inviteCode) {
-      toast.error('Please enter an invite code');
+    if (!inviteCode.trim()) {
+      toast.error('Please enter an invite code', {
+        position: "top-center",
+        autoClose: 3000,
+      });
       return;
     }
 
     setLoading(true);
     try {
       const response = await axios.post(
-        '/api/groups/join',
-        { code: inviteCode },
-        { headers: { Authorization: `Bearer ${token}` } }
+        '/api/group/join',
+        { code: inviteCode.toUpperCase() },
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
       
-      toast.success(response.data.message || 'Joined group successfully!');
-      onGroupChange();
-      setInviteCode('');
+      if (response.data.success) {
+        toast.success(`Joined group: ${response.data.group.name}`, {
+          position: "top-center",
+          autoClose: 3000,
+        });
+        onGroupChange();
+        setInviteCode('');
+      } else {
+        toast.error(response.data.message || 'Failed to join group', {
+          position: "top-center",
+          autoClose: 3000,
+        });
+      }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Failed to join group';
-      toast.error(errorMessage);
+      const errorMessage = error.response?.data?.message || 
+                         error.message || 
+                         'Failed to join group';
+      toast.error(errorMessage, {
+        position: "top-center",
+        autoClose: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -193,16 +261,18 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
     <Box sx={{ width: '100%' }}>
       <TextField
         fullWidth
-        label="Invite Code"
+        label="Group Invite Code"
         value={inviteCode}
-        onChange={(e) => setInviteCode(e.target.value)}
+        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
         margin="normal"
+        inputProps={{ maxLength: 6 }}
+        placeholder="Enter 6-digit code"
       />
       <Button
         fullWidth
         variant="contained"
         onClick={handleJoinGroup}
-        disabled={loading}
+        disabled={loading || !inviteCode.trim()}
         sx={{
           mt: 2,
           bgcolor: COLORS.primary,
@@ -211,7 +281,12 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
           borderRadius: 2
         }}
       >
-        {loading ? 'Joining...' : 'Join Group'}
+        {loading ? (
+          <>
+            <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+            Joining...
+          </>
+        ) : 'Join Group'}
       </Button>
     </Box>
   );
@@ -224,7 +299,7 @@ const Dashboard = () => {
   const [token, setToken] = useState('');
   const navigate = useNavigate();
   
-  const { groups } = useGroups(token, refreshGroups);
+  const { createdGroups, joinedGroups, loading, refetch } = useGroups(token, refreshGroups);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -248,11 +323,59 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-  const handleGroupChange = () => setRefreshGroups(prev => !prev);
+  const handleGroupChange = () => {
+    setRefreshGroups(prev => !prev);
+    refetch();
+  };
+
+  const handleDeleteGroup = async (groupId) => {
+    try {
+      await axios.delete(`/api/group/${groupId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Group deleted successfully');
+      handleGroupChange();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete group');
+    }
+  };
+
+  const handleLeaveGroup = async (groupId) => {
+    try {
+      await axios.post(`/api/group/${groupId}/leave`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Left group successfully');
+      handleGroupChange();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to leave group');
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        toastStyle={{
+          backgroundColor: COLORS.cardBackground,
+          color: COLORS.textPrimary,
+          borderLeft: `4px solid ${COLORS.primary}`,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+        }}
+        progressStyle={{
+          background: COLORS.primary
+        }}
+      />
+      
       <Sidebar username={username} onLogout={handleLogout} />
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', px: 4, py: 3 }}>
@@ -260,19 +383,55 @@ const Dashboard = () => {
           Hello, {username} 👋
         </Typography>
 
+        {/* Created Groups Section */}
         <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
-          Your Groups
+          Your Created Groups
         </Typography>
 
-        {groups.length === 0 ? (
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <CircularProgress size={60} sx={{ color: COLORS.primary }} />
+          </Box>
+        ) : createdGroups.length === 0 ? (
           <Typography color={COLORS.textPrimary} mb={4}>
-            No groups yet. Create or join one below!
+            You haven't created any groups yet
           </Typography>
         ) : (
           <Grid container spacing={3} mb={4}>
-            {groups.map(group => (
+            {createdGroups.map(group => (
               <Grid item xs={12} sm={6} md={4} key={group._id}>
-                <GroupCard group={group} />
+                <GroupCard 
+                  group={group}
+                  isOwner={true}
+                  onDelete={handleDeleteGroup}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        )}
+
+        {/* Joined Groups Section */}
+        <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
+          Groups You've Joined
+        </Typography>
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <CircularProgress size={60} sx={{ color: COLORS.primary }} />
+          </Box>
+        ) : joinedGroups.length === 0 ? (
+          <Typography color={COLORS.textPrimary} mb={4}>
+            You haven't joined any groups yet
+          </Typography>
+        ) : (
+          <Grid container spacing={3} mb={4}>
+            {joinedGroups.map(group => (
+              <Grid item xs={12} sm={6} md={4} key={group._id}>
+                <GroupCard 
+                  group={group}
+                  isOwner={false}
+                  onLeave={handleLeaveGroup}
+                />
               </Grid>
             ))}
           </Grid>

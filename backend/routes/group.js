@@ -1,14 +1,20 @@
 const express = require('express');
-const { createGroup } = require('../controllers/groupController');
+const {
+  createGroup,
+  joinGroup,
+  getUserGroups,
+  leaveGroup
+} = require('../controllers/groupController');
 
 const router = express.Router();
 
-router.post('group/create', createGroup);
-const { joinGroup } = require('../controllers/groupController');
-router.post('group/join', joinGroup);
+// Group management routes
+router.post('/create', createGroup);
+router.post('/join', joinGroup);
+router.get('/my', getUserGroups);
+router.post('/:groupId/leave', leaveGroup);
 
-
-module.exports = router; 
+module.exports = router;
 
 
 

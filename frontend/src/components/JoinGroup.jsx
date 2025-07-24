@@ -13,7 +13,7 @@ const JoinGroup = ({ token }) => {
     setSuccess(null);
     setLoading(true);
     try {
-      const res = await axios.post('/api/groups/join', { code }, {
+      const res = await axios.post('/api/group/join', { code }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess(`Successfully joined group: ${res.data.group.name}`);

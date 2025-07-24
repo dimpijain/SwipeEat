@@ -26,7 +26,7 @@ const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
 const groupRoutes = require('./routes/group');
-app.use('/api', groupRoutes);
+app.use('/api/group', groupRoutes);
 
 
 const PORT = process.env.PORT || 5000;

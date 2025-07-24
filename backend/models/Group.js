@@ -1,42 +1,52 @@
-const mongoose=require('mongoose');
+const mongoose = require('mongoose');
 
 const groupSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+    trim: true
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: true
   },
-  members: [
-    {
+  members: [{
+    user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      required: true
     },
-  ],
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   preferences: {
     budget: {
       type: String,
       enum: ['Low', 'Medium', 'High'],
-      default: 'Medium',
+      default: 'Medium'
     },
-    cuisine: {
-      type: [String], // e.g., ['Chinese', 'Indian']
-      default: [],
-    },
-    location: {
+    cuisine: [{
       type: String,
-      default: '',
-    },
+      enum: ['Indian', 'Chinese', 'Italian', 'Mexican', 'Thai']
+    }],
+    location: String
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  joinCode: {
+    type: String,
+    unique: true,
+    required: true,
+    uppercase: true,
+    minlength: 6,
+    maxlength: 6
+  }
+}, { timestamps: true });
 
+// Indexes for better performance
+groupSchema.index({ joinCode: 1 }, { unique: true });
+groupSchema.index({ createdBy: 1 });
+groupSchema.index({ 'members.user': 1 });
 
-
-module.exports= mongoose.model('Group', groupSchema);
+module.exports = mongoose.model('Group', groupSchema);
