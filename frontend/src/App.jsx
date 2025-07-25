@@ -5,6 +5,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 
+import RestaurantSwipe from './pages/RestaurantSwipe';
 const App = () => {
   return (
     
@@ -13,6 +14,8 @@ const App = () => {
         <Route path="/register" element={<Register/>}/>
         <Route path="/dashboard" element={<Dashboard/>}/>
          <Route path="/login" element={<Login/>}/>
+   
+         <Route path="/swipe" element={<RestaurantSwipe/>}/>
       </Routes>
     
   );

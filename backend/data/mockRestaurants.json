@@ -1,0 +1,29 @@
+[
+  {
+    "id": "rest1",
+    "name": "Bombay Biryani",
+    "image": "https://source.unsplash.com/400x300/?biryani",
+    "rating": 4.5,
+    "location": "Delhi",
+    "address": "123 Biryani Street",
+    "cuisine": ["Indian", "Biryani"]
+  },
+  {
+    "id": "rest2",
+    "name": "Tandoori Tadka",
+    "image": "https://source.unsplash.com/400x300/?tandoori",
+    "rating": 4.2,
+    "location": "Delhi",
+    "address": "456 Tandoor Lane",
+    "cuisine": ["Indian", "Tandoori"]
+  },
+  {
+    "id": "rest3",
+    "name": "Veggie Delight",
+    "image": "https://source.unsplash.com/400x300/?veg-thali",
+    "rating": 4.0,
+    "location": "Delhi",
+    "address": "789 Veg Road",
+    "cuisine": ["Indian", "Vegetarian"]
+  }
+]

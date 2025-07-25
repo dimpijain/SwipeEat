@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -13,18 +13,18 @@ import {
   IconButton,
   Divider,
   Tabs,
-  Tab
+  Tab,
+  Alert
 } from '@mui/material';
-import { List, ListItem, ListItemText } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CreateGroup from '../components/CreateGroup';
 import axios from 'axios';
-import RestaurantIcon from '@mui/icons-material/Restaurant';
-import FastfoodIcon from '@mui/icons-material/Fastfood';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
+import DeleteIcon from '@mui/icons-material/Delete';
+import RestaurantIcon from '@mui/icons-material/Restaurant';
+import FastfoodIcon from '@mui/icons-material/Fastfood';
 
 const COLORS = {
   primary: '#FF7F7F',
@@ -36,41 +36,36 @@ const COLORS = {
   accent: '#B5EAD7'
 };
 
-const useGroups = (token, refreshFlag) => {
+// Set base URL for API calls
+axios.defaults.baseURL = 'http://localhost:5000';
+
+const useGroups = (token) => {
   const [createdGroups, setCreatedGroups] = useState([]);
   const [joinedGroups, setJoinedGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await axios.get('/api/group/my', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` }
       });
       
       if (res.data.success) {
         setCreatedGroups(res.data.createdGroups || []);
         setJoinedGroups(res.data.joinedGroups || []);
       } else {
-        setError(res.data.message || 'Failed to load groups');
-        toast.error(res.data.message || 'Failed to load groups');
+        throw new Error(res.data.message || 'Failed to load groups');
       }
     } catch (err) {
       setError(err.message);
-      toast.error(err.response?.data?.message || 'Error loading groups');
-      setCreatedGroups([]);
-      setJoinedGroups([]);
+      console.error('Fetch groups error:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchGroups();
-    }
-  }, [token, refreshFlag]);
+  }, [token]);
 
   return { createdGroups, joinedGroups, loading, error, refetch: fetchGroups };
 };
@@ -180,42 +175,13 @@ const GroupCard = ({ group, isOwner, onDelete, onLeave }) => (
   </Paper>
 );
 
-const EventsPanel = () => (
-  <Box
-    sx={{
-      width: 300,
-      bgcolor: COLORS.cardBackground,
-      p: 4,
-      borderLeft: `1px solid ${COLORS.secondary}`,
-      overflowY: 'auto'
-    }}
-  >
-    <Typography variant="h6" color={COLORS.primary} fontWeight={700} mb={2}>
-      Upcoming Events
-    </Typography>
-    <List>
-      {['Team Lunch', 'Project Meeting', 'Client Dinner'].map((event, index) => (
-        <ListItem key={index} sx={{ py: 1.5 }}>
-          <ListItemText
-            primary={event}
-            secondary={`${['Mon', 'Wed', 'Fri'][index]}, ${['12:00 PM', '2:30 PM', '7:00 PM'][index]}`}
-          />
-        </ListItem>
-      ))}
-    </List>
-  </Box>
-);
-
 const JoinGroupButton = ({ token, onGroupChange }) => {
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleJoinGroup = async () => {
     if (!inviteCode.trim()) {
-      toast.error('Please enter an invite code', {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      toast.error('Please enter an invite code');
       return;
     }
 
@@ -233,26 +199,15 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
       );
       
       if (response.data.success) {
-        toast.success(`Joined group: ${response.data.group.name}`, {
-          position: "top-center",
-          autoClose: 3000,
-        });
+        toast.success(`Joined group: ${response.data.group.name}`);
         onGroupChange();
         setInviteCode('');
-      } else {
-        toast.error(response.data.message || 'Failed to join group', {
-          position: "top-center",
-          autoClose: 3000,
-        });
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || 
                          error.message || 
                          'Failed to join group';
-      toast.error(errorMessage, {
-        position: "top-center",
-        autoClose: 3000,
-      });
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -283,10 +238,7 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
         }}
       >
         {loading ? (
-          <>
-            <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
-            Joining...
-          </>
+          <CircularProgress size={24} color="inherit" />
         ) : 'Join Group'}
       </Button>
     </Box>
@@ -294,14 +246,13 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
 };
 
 const Dashboard = () => {
-  const [refreshGroups, setRefreshGroups] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('myGroups');
   const navigate = useNavigate();
   
-  const { createdGroups, joinedGroups, loading, refetch } = useGroups(token, refreshGroups);
+  const { createdGroups, joinedGroups, loading, error, refetch } = useGroups(token);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -314,23 +265,23 @@ const Dashboard = () => {
       const decoded = jwtDecode(storedToken);
       setUsername(decoded.name || 'User');
       setToken(storedToken);
+      refetch();
     } catch (error) {
       console.error('Invalid token:', error);
       handleLogout();
     }
-  }, [navigate]);
+  }, [navigate, refetch]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
     navigate('/login');
-  };
+  }, [navigate]);
 
-  const handleGroupChange = () => {
-    setRefreshGroups(prev => !prev);
+  const handleGroupChange = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
-  const handleDeleteGroup = async (groupId) => {
+  const handleDeleteGroup = useCallback(async (groupId) => {
     try {
       await axios.delete(`/api/group/${groupId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -340,9 +291,9 @@ const Dashboard = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete group');
     }
-  };
+  }, [token, handleGroupChange]);
 
-  const handleLeaveGroup = async (groupId) => {
+  const handleLeaveGroup = useCallback(async (groupId) => {
     try {
       await axios.post(`/api/group/${groupId}/leave`, {}, {
         headers: { Authorization: `Bearer ${token}` }
@@ -352,7 +303,24 @@ const Dashboard = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to leave group');
     }
-  };
+  }, [token, handleGroupChange]);
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Error loading groups: {error}
+        </Alert>
+        <Button 
+          variant="contained" 
+          onClick={handleGroupChange}
+          sx={{ bgcolor: COLORS.primary }}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
@@ -386,17 +354,33 @@ const Dashboard = () => {
         </Typography>
 
         {/* Tab navigation */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs 
-            value={activeTab} 
-            onChange={(e, newValue) => setActiveTab(newValue)}
-            indicatorColor="primary"
-            textColor="primary"
-          >
-            <Tab label="My Groups" value="myGroups" />
-            <Tab label="Joined Groups" value="joinedGroups" />
-          </Tabs>
-        </Box>
+        <Tabs 
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{
+            mb: 3,
+            '& .MuiTabs-indicator': {
+              backgroundColor: COLORS.primary,
+            }
+          }}
+        >
+          <Tab 
+            label="My Groups" 
+            value="myGroups"
+            sx={{ 
+              fontWeight: activeTab === 'myGroups' ? 'bold' : 'normal',
+              color: COLORS.textPrimary
+            }}
+          />
+          <Tab 
+            label="Joined Groups" 
+            value="joinedGroups"
+            sx={{ 
+              fontWeight: activeTab === 'joinedGroups' ? 'bold' : 'normal',
+              color: COLORS.textPrimary
+            }}
+          />
+        </Tabs>
 
         {/* My Groups Tab */}
         {activeTab === 'myGroups' && (
@@ -410,9 +394,26 @@ const Dashboard = () => {
                 <CircularProgress size={60} sx={{ color: COLORS.primary }} />
               </Box>
             ) : createdGroups.length === 0 ? (
-              <Typography color={COLORS.textPrimary} mb={4}>
-                You haven't created any groups yet
-              </Typography>
+              <Box sx={{ 
+                p: 3, 
+                bgcolor: COLORS.cardBackground, 
+                borderRadius: 2,
+                textAlign: 'center'
+              }}>
+                <Typography color={COLORS.textPrimary} mb={2}>
+                  You haven't created any groups yet
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={() => setCreateGroupOpen(true)}
+                  sx={{
+                    bgcolor: COLORS.primary,
+                    '&:hover': { bgcolor: COLORS.primary },
+                  }}
+                >
+                  Create Your First Group
+                </Button>
+              </Box>
             ) : (
               <Grid container spacing={3} mb={4}>
                 {createdGroups.map(group => (
@@ -431,7 +432,7 @@ const Dashboard = () => {
               Group Actions
             </Typography>
 
-            <Grid container spacing={3} mb={4}>
+            <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Card sx={{ 
                   bgcolor: COLORS.cardBackground,
@@ -482,9 +483,16 @@ const Dashboard = () => {
                 <CircularProgress size={60} sx={{ color: COLORS.primary }} />
               </Box>
             ) : joinedGroups.length === 0 ? (
-              <Typography color={COLORS.textPrimary} mb={4}>
-                You haven't joined any groups yet
-              </Typography>
+              <Box sx={{ 
+                p: 3, 
+                bgcolor: COLORS.cardBackground, 
+                borderRadius: 2,
+                textAlign: 'center'
+              }}>
+                <Typography color={COLORS.textPrimary} mb={2}>
+                  You haven't joined any groups yet
+                </Typography>
+              </Box>
             ) : (
               <Grid container spacing={3} mb={4}>
                 {joinedGroups.map(group => (
@@ -503,7 +511,7 @@ const Dashboard = () => {
               Group Actions
             </Typography>
 
-            <Grid container spacing={3} mb={4}>
+            <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Card sx={{ 
                   bgcolor: COLORS.cardBackground,
@@ -531,8 +539,7 @@ const Dashboard = () => {
         )}
       </Box>
 
-      <EventsPanel />
-
+        
       <CreateGroup 
         open={createGroupOpen} 
         onClose={() => setCreateGroupOpen(false)}

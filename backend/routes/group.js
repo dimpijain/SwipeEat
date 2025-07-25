@@ -3,7 +3,8 @@ const {
   createGroup,
   joinGroup,
   getUserGroups,
-  leaveGroup
+  leaveGroup,
+ 
 } = require('../controllers/groupController');
 
 const router = express.Router();
@@ -13,6 +14,8 @@ router.post('/create', createGroup);
 router.post('/join', joinGroup);
 router.get('/my', getUserGroups);
 router.post('/:groupId/leave', leaveGroup);
+
+
 
 module.exports = router;
 

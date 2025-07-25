@@ -90,40 +90,66 @@ const joinGroup = async (req, res) => {
   }
 };
 
-// Get user's groups
 const getUserGroups = async (req, res) => {
   try {
+    // 1. Token verification
     const token = req.headers.authorization?.split(' ')[1];
-    
     if (!token) {
-      return res.status(401).json({ success: false, message: 'No token provided' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'No token provided' 
+      });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // 2. JWT verification with error handling
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid or expired token' 
+      });
+    }
+
     const userId = decoded.id;
 
+    // 3. Database query with optimization
     const groups = await Group.find({
       $or: [
         { createdBy: userId },
         { 'members.user': userId }
       ]
-    }).populate('createdBy', 'name').populate('members.user', 'name');
+    })
+    .populate('createdBy', 'name')
+    .populate('members.user', 'name')
+    .lean();
 
+    // 4. Format groups with safer ID comparison
     const formattedGroups = groups.map(group => ({
-      ...group.toObject(),
-      isOwner: group.createdBy._id.equals(userId)
+      ...group,
+      isOwner: group.createdBy._id.toString() === userId.toString()
     }));
 
+    // 5. Send response
     res.status(200).json({
       success: true,
       createdGroups: formattedGroups.filter(g => g.isOwner),
-      joinedGroups: formattedGroups.filter(g => !g.isOwner)
+      joinedGroups: formattedGroups.filter(g => !g.isOwner),
+      count: {
+        created: formattedGroups.filter(g => g.isOwner).length,
+        joined: formattedGroups.filter(g => !g.isOwner).length
+      }
     });
+
   } catch (error) {
+    console.error('[GetUserGroups Error]', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch groups',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' 
+        ? error.message 
+        : 'Internal server error'
     });
   }
 };
@@ -172,9 +198,50 @@ const leaveGroup = async (req, res) => {
   }
 };
 
+// controllers/groupController.js
+const getRestaurants = async (req, res) => {
+  try {
+    // In a real app, this would call Yelp/Google Places API
+    // and filter based on group preferences
+    const group = await Group.findById(req.params.groupId);
+    
+    // Mock implementation - replace with real API call
+    //const mockRestaurants = [...]; // Same as frontend mock data
+    
+    res.status(200).json(mockRestaurants);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const saveSwipe = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { restaurantId, action } = req.body;
+    const userId = req.user.id; // From JWT
+    
+    await Group.findByIdAndUpdate(groupId, {
+      $push: {
+        swipes: {
+          user: userId,
+          restaurant: restaurantId,
+          action, // 'like' or 'dislike'
+          timestamp: new Date()
+        }
+      }
+    });
+    
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   createGroup,
   joinGroup,
   getUserGroups,
-  leaveGroup
+  leaveGroup,
+  getRestaurants,
+  saveSwipe
 };
