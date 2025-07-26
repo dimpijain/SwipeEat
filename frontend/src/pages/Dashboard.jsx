@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Box,  Typography,  Grid,  Paper,Button,Card,CardContent,CardActions, TextField,CircularProgress,IconButton,Divider,Tabs,
-  Tab,  Alert,Dialog,DialogTitle,DialogContent,DialogActions, } from '@mui/material';
+  Box, Typography, Grid, Paper, Button, Card, CardContent, CardActions, TextField, CircularProgress, IconButton, Divider, Tabs,
+  Tab, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Slide, List, ListItem, ListItemText, Chip,
+} from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+//import 'react-toastify/dist/React-toastify.css';
 import CreateGroup from '../components/CreateGroup';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
@@ -12,6 +13,17 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import FastfoodIcon from '@mui/icons-material/Fastfood';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import CloseIcon from '@mui/icons-material/Close'; // For modal close button
+import GroupIcon from '@mui/icons-material/Group';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import StarIcon from '@mui/icons-material/Star'; // For matched restaurant rating
+import EventIcon from '@mui/icons-material/Event'; // For Events/Calendar section
+
+// Calendar imports
+import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import moment from 'moment';
 
 const COLORS = {
   primary: '#FF7F7F',
@@ -23,7 +35,6 @@ const COLORS = {
   accent: '#B5EAD7'
 };
 
-// Set base URL for API calls
 axios.defaults.baseURL = 'http://localhost:5000';
 
 const useGroups = (token) => {
@@ -39,7 +50,7 @@ const useGroups = (token) => {
       const res = await axios.get('/api/group/my', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (res.data.success) {
         setCreatedGroups(res.data.createdGroups || []);
         setJoinedGroups(res.data.joinedGroups || []);
@@ -54,76 +65,81 @@ const useGroups = (token) => {
     }
   }, [token]);
 
+  useEffect(() => {
+      if (token) {
+          fetchGroups();
+      }
+  }, [token, fetchGroups]);
+
   return { createdGroups, joinedGroups, loading, error, refetch: fetchGroups };
 };
 
-const Sidebar = ({ username, onLogout, onJoinGroupClick }) => (
-  <Box
-    sx={{
-      width: 260,
-      bgcolor: COLORS.sidebarBackground,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      px: 4,
-      py: 6,
-      borderRight: `2px solid ${COLORS.cardBackground}`,
-    }}
-  >
-    <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-        <FastfoodIcon sx={{ color: COLORS.primary, fontSize: 36, mr: 1 }} />
-        <Typography
-          variant="h4"
-          fontWeight={800}
-          color={COLORS.primary}
-          sx={{ fontFamily: "'Pacifico', cursive" }}
+// --- Animated Sidebar Component ---
+const Sidebar = ({ username, onLogout, open, onClose }) => (
+  <Slide direction="right" in={open} mountOnEnter unmountOnExit>
+    <Box
+      sx={{
+        width: 300,
+        bgcolor: COLORS.sidebarBackground,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        px: 4,
+        py: 6,
+        borderRight: `2px solid ${COLORS.cardBackground}`,
+        position: 'fixed',
+        height: '100vh',
+        zIndex: 1000,
+        boxShadow: 6,
+        // Added left: 0 to ensure it's on the left edge when open
+        left: 0,
+        // For the slide animation, need to consider where it slides from/to
+        // Slide direction="right" means it slides in from the left
+      }}
+    >
+      <Box>
+        <IconButton
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 16, right: 16, color: COLORS.textPrimary }}
         >
-          SwipeEat
+            <CloseIcon />
+        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, mt: 4 }}>
+          <FastfoodIcon sx={{ color: COLORS.primary, fontSize: 36, mr: 1 }} />
+          <Typography
+            variant="h4"
+            fontWeight={800}
+            color={COLORS.primary}
+            sx={{ fontFamily: "'Pacifico', cursive" }}
+          >
+            SwipeEat
+          </Typography>
+          <RestaurantIcon sx={{ color: COLORS.primary, fontSize: 36, ml: 1 }} />
+        </Box>
+        <Typography variant="h6" fontWeight={600} color={COLORS.textPrimary}>
+          Welcome,
         </Typography>
-        <RestaurantIcon sx={{ color: COLORS.primary, fontSize: 36, ml: 1 }} />
+        <Typography variant="h5" fontWeight={700} color={COLORS.primary}>
+          {username || 'User'}
+        </Typography>
       </Box>
-      <Typography variant="h6" fontWeight={600} color={COLORS.textPrimary}>
-        Welcome,
-      </Typography>
-      <Typography variant="h5" fontWeight={700} color={COLORS.primary}>
-        {username || 'User'}
-      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Button
+          variant="contained"
+          color="error"
+          fullWidth
+          onClick={onLogout}
+          sx={{
+            fontWeight: 700,
+            py: 1.5,
+            borderRadius: 3,
+          }}
+        >
+          Logout
+        </Button>
+      </Box>
     </Box>
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Button
-        variant="contained"
-        startIcon={<GroupAddIcon />}
-        onClick={onJoinGroupClick}
-        sx={{
-          bgcolor: COLORS.accent,
-          color: COLORS.textPrimary,
-          fontWeight: 700,
-          py: 1.5,
-          borderRadius: 3,
-          '&:hover': {
-            bgcolor: COLORS.accent,
-            opacity: 0.9
-          }
-        }}
-      >
-        Join Group
-      </Button>
-      <Button
-        variant="contained"
-        color="error"
-        fullWidth
-        onClick={onLogout}
-        sx={{
-          fontWeight: 700,
-          py: 1.5,
-          borderRadius: 3,
-        }}
-      >
-        Logout
-      </Button>
-    </Box>
-  </Box>
+  </Slide>
 );
 
 const GroupCard = ({ group, isOwner, onDelete, onLeave, onClick }) => (
@@ -156,14 +172,14 @@ const GroupCard = ({ group, isOwner, onDelete, onLeave, onClick }) => (
       {group.members?.length || 0} members
     </Typography>
     <Typography variant="caption" color={COLORS.textPrimary} mt={2} display="block">
-      {isOwner 
+      {isOwner
         ? `Created: ${new Date(group.createdAt).toLocaleDateString()}`
         : `Joined: ${new Date(group.joinDate).toLocaleDateString()}`}
     </Typography>
-    
+
     <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
       {isOwner ? (
-        <IconButton 
+        <IconButton
           onClick={(e) => {
             e.stopPropagation();
             onDelete(group._id);
@@ -191,7 +207,7 @@ const GroupCard = ({ group, isOwner, onDelete, onLeave, onClick }) => (
   </Paper>
 );
 
-const JoinGroupButton = ({ token, onGroupChange }) => {
+const JoinGroupForm = ({ token, onGroupChange }) => {
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -206,23 +222,23 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
       const response = await axios.post(
         '/api/group/join',
         { code: inviteCode.toUpperCase() },
-        { 
-          headers: { 
+        {
+          headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
-          } 
+          }
         }
       );
-      
+
       if (response.data.success) {
         toast.success(`Joined group: ${response.data.group.name}`);
         onGroupChange();
         setInviteCode('');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                         error.message || 
-                         'Failed to join group';
+      const errorMessage = error.response?.data?.message ||
+                           error.message ||
+                           'Failed to join group';
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -239,6 +255,15 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
         margin="normal"
         inputProps={{ maxLength: 6 }}
         placeholder="Enter 6-digit code"
+        sx={{
+            '& .MuiOutlinedInput-root': {
+                '& fieldset': { borderColor: COLORS.primary },
+                '&:hover fieldset': { borderColor: COLORS.primary },
+                '&.Mui-focused fieldset': { borderColor: COLORS.primary },
+            },
+            '& .MuiInputLabel-root': { color: COLORS.textPrimary },
+            '& .MuiInputBase-input': { color: COLORS.textPrimary },
+        }}
       />
       <Button
         fullWidth
@@ -261,6 +286,163 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
   );
 };
 
+
+const GroupDetailsModal = ({ open, onClose, group, token, onSwipeRedirect }) => {
+    const [matchedRestaurants, setMatchedRestaurants] = useState([]);
+    const [loadingMatches, setLoadingMatches] = useState(false);
+    const [matchesError, setMatchesError] = useState(null);
+
+    useEffect(() => {
+        if (open && group?._id && token) {
+            const fetchMatches = async () => {
+                setLoadingMatches(true);
+                setMatchesError(null);
+                try {
+                    const response = await axios.get(`/api/swipes/matches/${group._id}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setMatchedRestaurants(response.data.matchedRestaurants || []);
+                } catch (err) {
+                    console.error('Error fetching matched restaurants for modal:', err);
+                    setMatchesError('Failed to load matched restaurants.');
+                } finally {
+                    setLoadingMatches(false);
+                }
+            };
+            fetchMatches();
+        }
+    }, [open, group, token]);
+
+    if (!group) return null;
+
+    return (
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="md"
+            fullWidth
+            PaperProps={{
+                sx: {
+                    bgcolor: COLORS.cardBackground,
+                    borderRadius: 3,
+                    boxShadow: 24,
+                    p: 2,
+                }
+            }}
+        >
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                <Typography variant="h5" fontWeight={700} color={COLORS.primary}>
+                    {group.name} Details
+                </Typography>
+                <IconButton onClick={onClose} sx={{ color: COLORS.textPrimary }}>
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
+            <DialogContent dividers sx={{ pt: 2 }}>
+                <Typography variant="h6" color={COLORS.textPrimary} mt={1} mb={1}>
+                    <GroupIcon sx={{ verticalAlign: 'bottom', mr: 1 }} /> Members:
+                </Typography>
+                <List dense disablePadding>
+                    {group.members && group.members.length > 0 ? (
+                        group.members.map((member, index) => (
+                            <ListItem key={index} sx={{ py: 0.5 }}>
+                                <ListItemText
+                                    primary={member.user ? member.user.name : 'Unknown User'}
+                                    secondary={`Joined: ${new Date(member.joinedAt).toLocaleDateString()}`}
+                                    primaryTypographyProps={{ color: COLORS.textPrimary }}
+                                    secondaryTypographyProps={{ color: 'text.secondary', fontSize: '0.85rem' }}
+                                />
+                            </ListItem>
+                        ))
+                    ) : (
+                        <Typography variant="body2" color="text.secondary" ml={2}>No members found.</Typography>
+                    )}
+                </List>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="h6" color={COLORS.textPrimary} mt={2} mb={1}>
+                    <LocationOnIcon sx={{ verticalAlign: 'bottom', mr: 1 }} /> Group Preferences:
+                </Typography>
+                <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}>
+                    <strong>Invite Code:</strong> {group.joinCode}
+                </Typography>
+                {group.cuisinePreferences && group.cuisinePreferences.length > 0 && (
+                    <Box mt={1} mb={1}>
+                        <Typography variant="body2" color={COLORS.textPrimary}><strong>Cuisines:</strong></Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                            {group.cuisinePreferences.map((cuisine, idx) => (
+                                <Chip key={idx} label={cuisine} size="small"
+                                    sx={{ bgcolor: COLORS.accent, color: COLORS.textPrimary, fontWeight: 600 }} />
+                            ))}
+                        </Box>
+                    </Box>
+                )}
+                {group.location && (
+                    <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}>
+                        <strong>Location:</strong> {group.location}
+                    </Typography>
+                )}
+                {group.radius && (
+                    <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}>
+                        <strong>Search Radius:</strong> {group.radius} km
+                    </Typography>
+                )}
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography variant="h6" color={COLORS.textPrimary} mt={2} mb={1}>
+                    <RestaurantIcon sx={{ verticalAlign: 'bottom', mr: 1 }} /> Matched Restaurants:
+                </Typography>
+                {loadingMatches ? (
+                    <Box display="flex" justifyContent="center" py={2}><CircularProgress size={20} sx={{ color: COLORS.primary }} /></Box>
+                ) : matchesError ? (
+                    <Alert severity="error">{matchesError}</Alert>
+                ) : matchedRestaurants.length > 0 ? (
+                    <List dense disablePadding>
+                        {matchedRestaurants.map((restaurant, index) => (
+                            <ListItem key={restaurant.id || index} sx={{ py: 0.5 }}>
+                                <ListItemText
+                                    primary={restaurant.name}
+                                    secondary={
+                                        <Box>
+                                            <Typography variant="body2" color="text.secondary" component="span">{restaurant.address}</Typography>
+                                            {restaurant.rating && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                                    <StarIcon fontSize="inherit" sx={{ verticalAlign: 'middle', mr: 0.5 }} /> {restaurant.rating}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    }
+                                    primaryTypographyProps={{ fontWeight: 600, color: COLORS.textPrimary }}
+                                />
+                            </ListItem>
+                        ))}
+                    </List>
+                ) : (
+                    <Typography variant="body2" color="text.secondary">No restaurants matched yet in this group.</Typography>
+                )}
+            </DialogContent>
+            <DialogActions sx={{ p: 3, pt: 2 }}>
+                <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={() => onSwipeRedirect(group._id)}
+                    sx={{
+                        bgcolor: COLORS.primary,
+                        '&:hover': { bgcolor: COLORS.primary },
+                        py: 1.5,
+                        fontWeight: 600,
+                        borderRadius: 2
+                    }}
+                >
+                    Go to Swipe
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
 const Dashboard = () => {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [joinGroupOpen, setJoinGroupOpen] = useState(false);
@@ -268,7 +450,13 @@ const Dashboard = () => {
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('myGroups');
   const navigate = useNavigate();
-  
+
+  const [groupDetailsModalOpen, setGroupDetailsModalOpen] = useState(false);
+  const [selectedGroupForDetails, setSelectedGroupForDetails] = useState(null);
+
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Start open by default
+  const EVENT_PANEL_WIDTH = 320; // Define a consistent width for the event panel
+
   const { createdGroups, joinedGroups, loading, error, refetch } = useGroups(token);
 
   useEffect(() => {
@@ -277,17 +465,16 @@ const Dashboard = () => {
       navigate('/login');
       return;
     }
-    
+
     try {
       const decoded = jwtDecode(storedToken);
       setUsername(decoded.name || 'User');
       setToken(storedToken);
-      refetch();
     } catch (error) {
       console.error('Invalid token:', error);
       handleLogout();
     }
-  }, [navigate, refetch]);
+  }, [navigate]);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
@@ -299,6 +486,9 @@ const Dashboard = () => {
   }, [refetch]);
 
   const handleDeleteGroup = useCallback(async (groupId) => {
+    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+        return;
+    }
     try {
       await axios.delete(`/api/group/${groupId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -311,6 +501,9 @@ const Dashboard = () => {
   }, [token, handleGroupChange]);
 
   const handleLeaveGroup = useCallback(async (groupId) => {
+    if (!window.confirm('Are you sure you want to leave this group? You will lose access to its content.')) {
+        return;
+    }
     try {
       await axios.post(`/api/group/${groupId}/leave`, {}, {
         headers: { Authorization: `Bearer ${token}` }
@@ -322,7 +515,13 @@ const Dashboard = () => {
     }
   }, [token, handleGroupChange]);
 
-  const handleGroupClick = useCallback((groupId) => {
+  const handleGroupCardClick = useCallback((group) => {
+    setSelectedGroupForDetails(group);
+    setGroupDetailsModalOpen(true);
+  }, []);
+
+  const handleGoToSwipe = useCallback((groupId) => {
+    setGroupDetailsModalOpen(false);
     navigate(`/swipe/${groupId}`);
   }, [navigate]);
 
@@ -332,8 +531,8 @@ const Dashboard = () => {
         <Alert severity="error" sx={{ mb: 2 }}>
           Error loading groups: {error}
         </Alert>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           onClick={handleGroupChange}
           sx={{ bgcolor: COLORS.primary }}
         >
@@ -344,265 +543,380 @@ const Dashboard = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
-      <ToastContainer
-        position="top-center"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        toastStyle={{
-          backgroundColor: COLORS.cardBackground,
-          color: COLORS.textPrimary,
-          borderLeft: `4px solid ${COLORS.primary}`,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-        }}
-        progressStyle={{
-          background: COLORS.primary
-        }}
-      />
-      
-      <Sidebar 
-        username={username} 
-        onLogout={handleLogout} 
-        onJoinGroupClick={() => setJoinGroupOpen(true)}
-      />
+    <LocalizationProvider dateAdapter={AdapterMoment}>
+        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
+            <ToastContainer
+                position="top-center"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+                toastStyle={{
+                    backgroundColor: COLORS.cardBackground,
+                    color: COLORS.textPrimary,
+                    borderLeft: `4px solid ${COLORS.primary}`,
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                }}
+                progressStyle={{
+                    background: COLORS.primary
+                }}
+            />
 
-      <Box sx={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        px: 4, 
-        py: 3,
-        overflow: 'auto',
-        maxHeight: '100vh'
-      }}>
-        <Typography variant="h4" fontWeight={700} color={COLORS.primary} mb={1}>
-          Hello, {username} 👋
-        </Typography>
+            {/* Sidebar with sliding animation (left column) */}
+            <Sidebar
+                username={username}
+                onLogout={handleLogout}
+                open={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+            />
 
-        {/* Tab navigation */}
-        <Tabs 
-          value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          sx={{
-            mb: 3,
-            '& .MuiTabs-indicator': {
-              backgroundColor: COLORS.primary,
-            }
-          }}
-        >
-          <Tab 
-            label="My Groups" 
-            value="myGroups"
-            sx={{ 
-              fontWeight: activeTab === 'myGroups' ? 'bold' : 'normal',
-              color: COLORS.textPrimary
-            }}
-          />
-          <Tab 
-            label="Joined Groups" 
-            value="joinedGroups"
-            sx={{ 
-              fontWeight: activeTab === 'joinedGroups' ? 'bold' : 'normal',
-              color: COLORS.textPrimary
-            }}
-          />
-        </Tabs>
-
-        {/* My Groups Tab */}
-        {activeTab === 'myGroups' && (
-          <Box sx={{ flex: 1, overflow: 'auto' }}>
-            <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
-              Your Created Groups
-            </Typography>
-
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                <CircularProgress size={60} sx={{ color: COLORS.primary }} />
-              </Box>
-            ) : createdGroups.length === 0 ? (
-              <Box sx={{ 
-                p: 3, 
-                bgcolor: COLORS.cardBackground, 
-                borderRadius: 2,
-                textAlign: 'center'
-              }}>
-                <Typography color={COLORS.textPrimary} mb={2}>
-                  You haven't created any groups yet
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => setCreateGroupOpen(true)}
-                  sx={{
-                    bgcolor: COLORS.primary,
-                    '&:hover': { bgcolor: COLORS.primary },
-                  }}
-                >
-                  Create Your First Group
-                </Button>
-              </Box>
-            ) : (
-              <Grid container spacing={3} mb={4}>
-                {createdGroups.map(group => (
-                  <Grid item xs={12} sm={6} md={4} key={group._id}>
-                    <GroupCard 
-                      group={group}
-                      isOwner={true}
-                      onDelete={handleDeleteGroup}
-                      onClick={() => handleGroupClick(group._id)}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-
-            <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
-              Group Actions
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Card sx={{ 
-                  bgcolor: COLORS.cardBackground,
-                  borderRadius: 4,
-                  boxShadow: 3,
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
-                      Create New Group
-                    </Typography>
-                    <Typography variant="body2" color={COLORS.textPrimary}>
-                      Start a new food group with your preferences
-                    </Typography>
-                  </CardContent>
-                  <CardActions sx={{ p: 2 }}>
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      onClick={() => setCreateGroupOpen(true)}
-                      sx={{
-                        bgcolor: COLORS.primary,
-                        '&:hover': { bgcolor: COLORS.primary },
-                        py: 1.5,
-                        borderRadius: 2
-                      }}
+            {/* Main Content Area (middle column) */}
+            <Box sx={{
+                flexGrow: 1, // Allows this box to take up available space
+                display: 'flex',
+                flexDirection: 'column',
+                px: 4,
+                py: 3,
+                overflowY: 'auto', // Allow scrolling for this section
+                maxHeight: '100vh',
+                position: 'relative', // For open sidebar button positioning
+                // Dynamically adjust padding-left based on sidebar state
+                pl: sidebarOpen ? '320px' : '32px', // Sidebar width + padding
+                pr: `${EVENT_PANEL_WIDTH + 32}px`, // Adjust padding right based on event panel width + padding
+                transition: 'padding-left 0.3s ease-in-out',
+                // For smaller screens, the event panel might stack, so adjust pr for that too.
+                // You might need media queries for more precise responsive behavior.
+                '@media (max-width:960px)': { // md breakpoint for Grid
+                    pr: '32px', // When event panel stacks, remove its reserved space
+                }
+            }}>
+                {/* Button to open sidebar */}
+                {!sidebarOpen && (
+                    <IconButton
+                        onClick={() => setSidebarOpen(true)}
+                        sx={{
+                            position: 'fixed', // Fixed so it stays when scrolling main content
+                            top: 16,
+                            left: 16, // Position it outside the dynamic padding of main content
+                            bgcolor: COLORS.primary,
+                            color: 'white',
+                            '&:hover': { bgcolor: COLORS.primary },
+                            zIndex: 999,
+                        }}
                     >
-                      Create Group
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
+                        <FastfoodIcon />
+                    </IconButton>
+                )}
 
-        {/* Joined Groups Tab */}
-        {activeTab === 'joinedGroups' && (
-          <Box sx={{ flex: 1, overflow: 'auto' }}>
-            <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
-              Groups You've Joined
-            </Typography>
 
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                <CircularProgress size={60} sx={{ color: COLORS.primary }} />
-              </Box>
-            ) : joinedGroups.length === 0 ? (
-              <Box sx={{ 
-                p: 3, 
-                bgcolor: COLORS.cardBackground, 
-                borderRadius: 2,
-                textAlign: 'center'
-              }}>
-                <Typography color={COLORS.textPrimary} mb={2}>
-                  You haven't joined any groups yet
-                </Typography>
-              </Box>
-            ) : (
-              <Grid container spacing={3} mb={4}>
-                {joinedGroups.map(group => (
-                  <Grid item xs={12} sm={6} md={4} key={group._id}>
-                    <GroupCard 
-                      group={group}
-                      isOwner={false}
-                      onLeave={handleLeaveGroup}
-                      onClick={() => handleGroupClick(group._id)}
+                <Tabs
+                    value={activeTab}
+                    onChange={(e, newValue) => setActiveTab(newValue)}
+                    sx={{
+                        mb: 3,
+                        '& .MuiTabs-indicator': {
+                            backgroundColor: COLORS.primary,
+                        }
+                    }}
+                >
+                    <Tab
+                        label="My Groups"
+                        value="myGroups"
+                        sx={{
+                            fontWeight: activeTab === 'myGroups' ? 'bold' : 'normal',
+                            color: COLORS.textPrimary,
+                            fontSize: '1.1rem'
+                        }}
                     />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
+                    <Tab
+                        label="Joined Groups"
+                        value="joinedGroups"
+                        sx={{
+                            fontWeight: activeTab === 'joinedGroups' ? 'bold' : 'normal',
+                            color: COLORS.textPrimary,
+                            fontSize: '1.1rem'
+                        }}
+                    />
+                </Tabs>
 
-            <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
-              Group Actions
-            </Typography>
+                {/* Grid for main content - groups and action cards */}
+                {activeTab === 'myGroups' && (
+                    <Box sx={{ flex: 1 }}>
+                        <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
+                            Your Created Groups
+                        </Typography>
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Card sx={{ 
-                  bgcolor: COLORS.cardBackground,
-                  borderRadius: 4,
-                  boxShadow: 3,
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column'
+                        {loading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                                <CircularProgress size={60} sx={{ color: COLORS.primary }} />
+                            </Box>
+                        ) : createdGroups.length === 0 ? (
+                            <Box sx={{
+                                p: 3,
+                                bgcolor: COLORS.cardBackground,
+                                borderRadius: 2,
+                                textAlign: 'center'
+                            }}>
+                                <Typography color={COLORS.textPrimary} mb={2}>
+                                    You haven't created any groups yet
+                                </Typography>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => setCreateGroupOpen(true)}
+                                    sx={{
+                                        bgcolor: COLORS.primary,
+                                        '&:hover': { bgcolor: COLORS.primary },
+                                    }}
+                                >
+                                    Create Your First Group
+                                </Button>
+                            </Box>
+                        ) : (
+                            <Grid container spacing={3} mb={4}>
+                                {createdGroups.map(group => (
+                                    <Grid item xs={12} sm={6} key={group._id}>
+                                        <GroupCard
+                                            group={group}
+                                            isOwner={true}
+                                            onDelete={handleDeleteGroup}
+                                            onClick={() => handleGroupCardClick(group)}
+                                        />
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        )}
+
+                        <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
+                            Group Actions
+                        </Typography>
+
+                        <Grid container spacing={3} mb={4}> {/* Added mb for consistent spacing */}
+                            <Grid item xs={12} sm={6}>
+                                <Card sx={{
+                                    bgcolor: COLORS.cardBackground,
+                                    borderRadius: 4,
+                                    boxShadow: 3,
+                                    minHeight: 200,
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <CardContent sx={{ flexGrow: 1 }}>
+                                        <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
+                                            Create New Group
+                                        </Typography>
+                                        <Typography variant="body2" color={COLORS.textPrimary}>
+                                            Start a new food group with your preferences
+                                        </Typography>
+                                    </CardContent>
+                                    <CardActions sx={{ p: 2 }}>
+                                        <Button
+                                            fullWidth
+                                            variant="contained"
+                                            onClick={() => setCreateGroupOpen(true)}
+                                            sx={{
+                                                bgcolor: COLORS.primary,
+                                                '&:hover': { bgcolor: COLORS.primary },
+                                                py: 1.5,
+                                                borderRadius: 2
+                                            }}
+                                        >
+                                            Create Group
+                                        </Button>
+                                    </CardActions>
+                                </Card>
+                            </Grid>
+                        </Grid>
+                    </Box>
+                )}
+
+                {activeTab === 'joinedGroups' && (
+                    <Box sx={{ flex: 1 }}>
+                        <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
+                            Groups You've Joined
+                        </Typography>
+
+                        {loading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                                <CircularProgress size={60} sx={{ color: COLORS.primary }} />
+                            </Box>
+                        ) : joinedGroups.length === 0 ? (
+                            <Box sx={{
+                                p: 3,
+                                bgcolor: COLORS.cardBackground,
+                                borderRadius: 2,
+                                textAlign: 'center'
+                            }}>
+                                <Typography color={COLORS.textPrimary} mb={2}>
+                                    You haven't joined any groups yet
+                                </Typography>
+                            </Box>
+                        ) : (
+                            <Grid container spacing={3} mb={4}>
+                                {joinedGroups.map(group => (
+                                    <Grid item xs={12} sm={6} key={group._id}>
+                                        <GroupCard
+                                            group={group}
+                                            isOwner={false}
+                                            onLeave={handleLeaveGroup}
+                                            onClick={() => handleGroupCardClick(group)}
+                                        />
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        )}
+
+                        <Typography variant="h6" color={COLORS.textPrimary} mb={3}>
+                            Group Actions
+                        </Typography>
+
+                        <Grid container spacing={3} mb={4}> {/* Added mb for consistent spacing */}
+                            <Grid item xs={12} sm={6}>
+                                <Card sx={{
+                                    bgcolor: COLORS.cardBackground,
+                                    borderRadius: 4,
+                                    boxShadow: 3,
+                                    minHeight: 200,
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                }}>
+                                    <CardContent sx={{ flexGrow: 1 }}>
+                                        <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
+                                            Join Existing Group
+                                        </Typography>
+                                        <Typography variant="body2" color={COLORS.textPrimary}>
+                                            Enter an invite code to join your friends' group
+                                        </Typography>
+                                    </CardContent>
+                                    <CardActions sx={{ p: 2 }}>
+                                        <JoinGroupForm token={token} onGroupChange={handleGroupChange} />
+                                    </CardActions>
+                                </Card>
+                            </Grid>
+                        </Grid>
+                    </Box>
+                )}
+            </Box>
+
+            {/* Right Event Panel (full column on the right) */}
+            <Box
+                sx={{
+                    width: EVENT_PANEL_WIDTH,
+                    bgcolor: COLORS.sidebarBackground, // Using sidebar background for consistency
+                    display: 'flex',
+                    flexDirection: 'column',
+                    p: 3,
+                    borderLeft: `2px solid ${COLORS.cardBackground}`,
+                    position: 'sticky', // Makes it sticky within its parent flex container
+                    top: 0,
+                    height: '100vh', // Full viewport height
+                    overflowY: 'auto', // Allow internal scrolling if content exceeds height
+                    boxShadow: 6,
+                    // Hide on smaller screens or stack it if md breakpoint reached
+                    '@media (max-width:960px)': {
+                        display: 'none', // Hide on small/medium screens for now, can be adjusted
+                    }
+                }}
+            >
+                <Paper elevation={0} sx={{ // Removed elevation as parent box already has shadow
+                    bgcolor: 'transparent', // Make it transparent to use parent background
+                    p: 0, // Remove padding as parent box has it
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
                 }}>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom>
-                      Join Existing Group
+                    <Typography variant="h6" fontWeight={700} color={COLORS.primary} sx={{ mb: 1, display: 'flex', alignItems: 'center' }}>
+                        <EventIcon sx={{ mr: 1 }} /> Events & Calendar
                     </Typography>
-                    <Typography variant="body2" color={COLORS.textPrimary}>
-                      Enter an invite code to join your friends' group
+                    <StaticDatePicker
+                        orientation="portrait"
+                        defaultValue={moment()}
+                        readOnly
+                        sx={{
+                            width: '100%', // Make calendar responsive to its container width
+                            '.MuiCalendarPicker-root': { width: '100%' },
+                            '.MuiPickersDay-root': { color: COLORS.textPrimary },
+                            '.MuiPickersDay-root.Mui-selected': { bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary } },
+                            '.MuiPickersToolbar-root': { bgcolor: COLORS.accent, color: COLORS.textPrimary },
+                            '.MuiDateCalendar-root': { '& button': { color: COLORS.textPrimary } },
+                            '.MuiTypography-root': { color: COLORS.textPrimary },
+                        }}
+                    />
+                    <Divider sx={{ my: 2, width: '80%' }} />
+                    <Typography variant="body1" color={COLORS.textPrimary} textAlign="center">
+                        Upcoming group events or plan your next meal!
                     </Typography>
-                  </CardContent>
-                  <CardActions sx={{ p: 2 }}>
-                    <JoinGroupButton token={token} onGroupChange={handleGroupChange} />
-                  </CardActions>
-                </Card>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-      </Box>
+                    <Button
+                        variant="outlined"
+                        sx={{
+                            mt: 1,
+                            color: COLORS.primary,
+                            borderColor: COLORS.primary,
+                            '&:hover': { borderColor: COLORS.primary, bgcolor: COLORS.primary + '10' }
+                        }}
+                    >
+                        Plan an Event
+                    </Button>
+                </Paper>
+            </Box>
 
-      {/* Join Group Dialog */}
-      <Dialog 
-        open={joinGroupOpen} 
-        onClose={() => setJoinGroupOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Join a Group</DialogTitle>
-        <DialogContent>
-          <JoinGroupButton 
-            token={token} 
-            onGroupChange={() => {
-              handleGroupChange();
-              setJoinGroupOpen(false);
-            }} 
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setJoinGroupOpen(false)}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
-        
-      <CreateGroup 
-        open={createGroupOpen} 
-        onClose={() => setCreateGroupOpen(false)}
-        token={token} 
-        onGroupChange={handleGroupChange} 
-      />
-    </Box>
+            {/* Modals/Dialogs */}
+            <GroupDetailsModal
+                open={groupDetailsModalOpen}
+                onClose={() => setGroupDetailsModalOpen(false)}
+                group={selectedGroupForDetails}
+                token={token}
+                onSwipeRedirect={handleGoToSwipe}
+            />
+
+            <Dialog
+                open={joinGroupOpen}
+                onClose={() => setJoinGroupOpen(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        bgcolor: COLORS.cardBackground,
+                        borderRadius: 3,
+                        boxShadow: 24,
+                        p: 2,
+                    }
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+                    <Typography variant="h5" fontWeight={700} color={COLORS.primary}>Join a Group</Typography>
+                    <IconButton onClick={() => setJoinGroupOpen(false)} sx={{ color: COLORS.textPrimary }}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers sx={{ pt: 2 }}>
+                    <JoinGroupForm
+                        token={token}
+                        onGroupChange={() => {
+                            handleGroupChange();
+                            setJoinGroupOpen(false);
+                        }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setJoinGroupOpen(false)} sx={{ color: COLORS.textPrimary }}>Cancel</Button>
+                </DialogActions>
+            </Dialog>
+
+            <CreateGroup
+                open={createGroupOpen}
+                onClose={() => setCreateGroupOpen(false)}
+                token={token}
+                onGroupChange={handleGroupChange}
+            />
+        </Box>
+    </LocalizationProvider>
   );
 };
 
