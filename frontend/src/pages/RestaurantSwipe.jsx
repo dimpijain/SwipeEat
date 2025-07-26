@@ -40,12 +40,16 @@ const RestaurantSwipe = () => {
   const [restaurantDetails, setRestaurantDetails] = useState(null);
   const [token, setToken] = useState('');
   const [swipedRestaurants, setSwipedRestaurants] = useState(new Set());
-  
+
   const currentIndexRef = useRef(currentIndex);
-  const childRefs = useMemo(() => 
-    Array(mockRestaurants.length).fill(0).map(() => React.createRef()),
-    [mockRestaurants.length]
-  );
+  // Ensure childRefs is always sized correctly to the current db length
+  const childRefs = useRef([]);
+
+  useEffect(() => {
+    // Update childRefs when db changes
+    childRefs.current = Array(db.length).fill(0).map((_, i) => childRefs.current[i] || React.createRef());
+  }, [db]);
+
 
   useEffect(() => {
     currentIndexRef.current = currentIndex;
@@ -67,13 +71,18 @@ const RestaurantSwipe = () => {
       setLoading(true);
       setError(null);
       setTimeout(() => {
+        // Filter out already swiped restaurants from mock data
         const filteredRestaurants = mockRestaurants.filter(
           restaurant => !swipedRestaurants.has(restaurant.id)
         );
-        
-        if (filteredRestaurants.length > 0) {
-          setDb(filteredRestaurants);
-          setCurrentIndex(filteredRestaurants.length - 1);
+
+        // TinderCard expects the array to be in reverse order for correct stacking
+        // and to swipe from the top (last element)
+        const reversedRestaurants = [...filteredRestaurants].reverse();
+
+        if (reversedRestaurants.length > 0) {
+          setDb(reversedRestaurants);
+          setCurrentIndex(reversedRestaurants.length - 1); // Index of the top card
         } else {
           setDb([]);
           setCurrentIndex(-1);
@@ -83,68 +92,86 @@ const RestaurantSwipe = () => {
     };
 
     loadMockRestaurants();
-  }, [groupId, token, swipedRestaurants]);
+  }, [groupId, token, swipedRestaurants]); // Depend on swipedRestaurants to reload when a swipe is registered
 
+  // This is called by TinderCard when the card leaves the screen
   const outOfFrame = useCallback((id) => {
     console.log(`${id} left the screen!`);
-    setSwipedRestaurants(prev => new Set(prev).add(id));
-    setDb(prevDb => prevDb.filter(restaurant => restaurant.id !== id));
+    // This is primarily for cleanup or final state update after animation
+    // The state for swiped restaurants should ideally be updated after successful API call
   }, []);
 
-  const swipe = useCallback(async (dir) => {
-    const targetIndex = currentIndexRef.current;
-    
-    if (targetIndex < 0 || !childRefs[targetIndex]?.current) {
-      console.log('No more cards to swipe');
+  // Main swipe logic, called by buttons or by TinderCard's onSwipe
+  const swipe = useCallback(async (dir, manualSwipe = false) => {
+    const targetIndex = currentIndexRef.current; // Get the current index from the ref
+
+    if (targetIndex < 0 || !db[targetIndex] || !childRefs.current[targetIndex]?.current) {
+      console.log('No more cards to swipe or invalid target index.');
       return;
     }
 
     const restaurantToSwipe = db[targetIndex];
-    if (!restaurantToSwipe) return;
 
     try {
-      // Programmatically trigger swipe animation
-      await childRefs[targetIndex].current.swipe(dir);
+      // Only programmatically swipe if it's not a user-initiated swipe from the card itself
+      if (!manualSwipe) {
+          await childRefs.current[targetIndex].current.swipe(dir);
+      }
       setLastDirection(dir);
 
-      // Save swipe to backend
-     // In your frontend swipe function
-const response = await axios.post(
-  'http://localhost:5000/api/swipes/save',
-  {
-    groupId,
-    restaurantId: restaurantToSwipe.id,
-    direction: dir === 'right' ? 'right' : 'left'
-  },
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+      const response = await axios.post(
+        'http://localhost:5000/api/swipes/save',
+        {
+          groupId,
+          restaurantId: restaurantToSwipe.id,
+          direction: dir === 'right' ? 'right' : 'left'
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-if (response.status === 201) {
-  // Successful new swipe
-  setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-  setCurrentIndex(prevIndex => prevIndex - 1);
-} else if (response.status === 409) {
-  // Already swiped - just move to next card
-  setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-  setCurrentIndex(prevIndex => prevIndex - 1);
-}
+      // If swipe is successful or already exists (409)
+      if (response.status === 201 || response.status === 409) {
+        setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
+        // Only decrement currentIndex if the swipe was truly processed (new or already existing)
+        setCurrentIndex(prevIndex => prevIndex - 1);
+        console.log(`Successfully processed swipe for ${restaurantToSwipe.name}`);
+      } else {
+        // This case should ideally be caught by the catch block, but as a fallback
+        toast.error(`Unexpected response status: ${response.status}. Failed to save swipe.`, {
+            position: "top-center",
+            autoClose: 2000,
+            hideProgressBar: true
+        });
+      }
     } catch (err) {
       console.error('Swipe error:', err);
-      toast.error(`Failed to save swipe. ${err.response?.data?.error || ''}`, {
-        position: "top-center",
-        autoClose: 2000,
-        hideProgressBar: true
-      });
-    } finally {
-      // Update swiped restaurants and move to next card
-      setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-      setCurrentIndex(prevIndex => Math.max(prevIndex - 1, -1));
+      // Only show error toast for actual errors (not 409 which is handled above)
+      if (err.response && err.response.status === 409) {
+          console.log(`Restaurant ${restaurantToSwipe.name} already swiped.`);
+          setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
+          setCurrentIndex(prevIndex => prevIndex - 1);
+      } else {
+          toast.error(`Failed to save swipe. ${err.response?.data?.error || err.message || ''}`, {
+              position: "top-center",
+              autoClose: 2000,
+              hideProgressBar: true
+          });
+      }
     }
-  }, [groupId, db, token, childRefs]);
+  }, [groupId, db, token]); // Removed childRefs from dependencies as it's a ref, not state
 
   const handleSwipeButton = (dir) => {
-    swipe(dir);
+    // When buttons are clicked, it's a manual swipe, so we programmatically swipe the card
+    swipe(dir, true);
   };
+
+  const handleCardSwipedByUser = useCallback((dir) => {
+    // When the user physically swipes the card, this callback is triggered.
+    // We already have the 'dir' and don't need to programmatically swipe again.
+    // We pass true to indicate it's a manual swipe, so the internal `childRefs.current[targetIndex].current.swipe(dir)` is skipped.
+    swipe(dir, true);
+  }, [swipe]);
+
 
   const handleCardClick = (restaurant) => {
     setCurrentRestaurant(restaurant);
@@ -211,7 +238,9 @@ if (response.status === 201) {
           justifyContent: 'center',
           alignItems: 'center'
         }}>
-          {db.length === 0 && currentIndex < 0 ? (
+          {loading ? (
+            <CircularProgress sx={{ color: COLORS.primary }} />
+          ) : db.length === 0 && currentIndex < 0 ? (
             <Paper elevation={3} sx={{
               p: 3,
               textAlign: 'center',
@@ -235,11 +264,9 @@ if (response.status === 201) {
           ) : (
             db.map((restaurant, index) => (
               <TinderCard
-                ref={childRefs[index]}
+                ref={childRefs.current[index]} // Use .current for refs array
                 key={restaurant.id}
-                onSwipe={(dir) => {
-                  swipe(dir);
-                }}
+                onSwipe={handleCardSwipedByUser} // Call the refined handler
                 onCardLeftScreen={() => outOfFrame(restaurant.id)}
                 preventSwipe={['up', 'down']}
                 swipeThreshold={50}
