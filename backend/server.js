@@ -28,11 +28,14 @@ app.use('/api/auth', authRoutes);
 const groupRoutes = require('./routes/group');
 app.use('/api/group', groupRoutes);
 
-const swipesRoute = require('./routes/swipes');
-app.use('/api/swipe', swipesRoute);
+// const swipesRoute = require('./routes/swipes');
+// app.use('/api/swipe', swipesRoute);
 
 const restaurant=require('./routes/restaurants');
-app.use('/api/restaurant',restaurant);
+app.use('/api/restaurants',restaurant);
+
+const swipes = require('./routes/swipes');
+app.use('/api/swipes', swipes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

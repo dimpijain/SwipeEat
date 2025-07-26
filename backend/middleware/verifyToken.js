@@ -1,15 +1,16 @@
-// middleware/verifyToken.js
+// middleware/verifyToken.js - This is a good place for file comments
 const jwt = require('jsonwebtoken');
 
-module.exports = function(req, res, next) {
-  const token = req.header('Authorization')?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Access denied, no token provided' });
+const verifyToken = function(req, res, next) {
+    const token = req.header('Authorization')?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Access denied' });
 
-  try {
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = verified;  // e.g. { id: user._id, email: user.email }
-    next();
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid token' });
-  }
+    try {
+        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        next();
+    } catch (err) {
+        res.status(400).json({ error: 'Invalid token' });
+    }
 };
+
+module.exports = verifyToken; // Exports the function directly

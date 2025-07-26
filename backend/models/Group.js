@@ -41,7 +41,11 @@ const groupSchema = new mongoose.Schema({
     uppercase: true,
     minlength: 6,
     maxlength: 6
-  }
+  },
+  matchedRestaurants: [{ // <-- ADD THIS FIELD
+        type: String, // Google Place ID
+        
+    }]
 }, { timestamps: true });
 
 // Indexes for better performance

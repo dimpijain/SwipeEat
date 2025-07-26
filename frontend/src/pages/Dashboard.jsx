@@ -1,21 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  Box,
-  Typography,
-  Grid,
-  Paper,
-  Button,
-  Card,
-  CardContent,
-  CardActions,
-  TextField,
-  CircularProgress,
-  IconButton,
-  Divider,
-  Tabs,
-  Tab,
-  Alert
-} from '@mui/material';
+  Box,  Typography,  Grid,  Paper,Button,Card,CardContent,CardActions, TextField,CircularProgress,IconButton,Divider,Tabs,
+  Tab,  Alert,Dialog,DialogTitle,DialogContent,DialogActions, } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import CreateGroup from '../components/CreateGroup';
@@ -25,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import FastfoodIcon from '@mui/icons-material/Fastfood';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 
 const COLORS = {
   primary: '#FF7F7F',
@@ -70,7 +57,7 @@ const useGroups = (token) => {
   return { createdGroups, joinedGroups, loading, error, refetch: fetchGroups };
 };
 
-const Sidebar = ({ username, onLogout }) => (
+const Sidebar = ({ username, onLogout, onJoinGroupClick }) => (
   <Box
     sx={{
       width: 260,
@@ -103,25 +90,46 @@ const Sidebar = ({ username, onLogout }) => (
         {username || 'User'}
       </Typography>
     </Box>
-    <Button
-      variant="contained"
-      color="error"
-      fullWidth
-      onClick={onLogout}
-      sx={{
-        fontWeight: 700,
-        py: 1.5,
-        borderRadius: 3,
-      }}
-    >
-      Logout
-    </Button>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Button
+        variant="contained"
+        startIcon={<GroupAddIcon />}
+        onClick={onJoinGroupClick}
+        sx={{
+          bgcolor: COLORS.accent,
+          color: COLORS.textPrimary,
+          fontWeight: 700,
+          py: 1.5,
+          borderRadius: 3,
+          '&:hover': {
+            bgcolor: COLORS.accent,
+            opacity: 0.9
+          }
+        }}
+      >
+        Join Group
+      </Button>
+      <Button
+        variant="contained"
+        color="error"
+        fullWidth
+        onClick={onLogout}
+        sx={{
+          fontWeight: 700,
+          py: 1.5,
+          borderRadius: 3,
+        }}
+      >
+        Logout
+      </Button>
+    </Box>
   </Box>
 );
 
-const GroupCard = ({ group, isOwner, onDelete, onLeave }) => (
+const GroupCard = ({ group, isOwner, onDelete, onLeave, onClick }) => (
   <Paper
     elevation={3}
+    onClick={onClick}
     sx={{
       bgcolor: COLORS.cardBackground,
       p: 3,
@@ -129,8 +137,10 @@ const GroupCard = ({ group, isOwner, onDelete, onLeave }) => (
       height: '100%',
       position: 'relative',
       transition: 'transform 0.2s',
+      cursor: 'pointer',
       '&:hover': {
-        transform: 'translateY(-3px)'
+        transform: 'translateY(-3px)',
+        boxShadow: `0 4px 8px rgba(0,0,0,0.1)`
       }
     }}
   >
@@ -154,7 +164,10 @@ const GroupCard = ({ group, isOwner, onDelete, onLeave }) => (
     <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
       {isOwner ? (
         <IconButton 
-          onClick={() => onDelete(group._id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(group._id);
+          }}
           color="error"
           size="small"
         >
@@ -165,7 +178,10 @@ const GroupCard = ({ group, isOwner, onDelete, onLeave }) => (
           variant="outlined"
           color="error"
           size="small"
-          onClick={() => onLeave(group._id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onLeave(group._id);
+          }}
           sx={{ py: 0.5, fontSize: '0.75rem' }}
         >
           Leave Group
@@ -247,6 +263,7 @@ const JoinGroupButton = ({ token, onGroupChange }) => {
 
 const Dashboard = () => {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [joinGroupOpen, setJoinGroupOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('myGroups');
@@ -305,6 +322,10 @@ const Dashboard = () => {
     }
   }, [token, handleGroupChange]);
 
+  const handleGroupClick = useCallback((groupId) => {
+    navigate(`/swipe/${groupId}`);
+  }, [navigate]);
+
   if (error) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
@@ -346,9 +367,21 @@ const Dashboard = () => {
         }}
       />
       
-      <Sidebar username={username} onLogout={handleLogout} />
+      <Sidebar 
+        username={username} 
+        onLogout={handleLogout} 
+        onJoinGroupClick={() => setJoinGroupOpen(true)}
+      />
 
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', px: 4, py: 3 }}>
+      <Box sx={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        px: 4, 
+        py: 3,
+        overflow: 'auto',
+        maxHeight: '100vh'
+      }}>
         <Typography variant="h4" fontWeight={700} color={COLORS.primary} mb={1}>
           Hello, {username} 👋
         </Typography>
@@ -384,7 +417,7 @@ const Dashboard = () => {
 
         {/* My Groups Tab */}
         {activeTab === 'myGroups' && (
-          <Box>
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
             <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
               Your Created Groups
             </Typography>
@@ -422,6 +455,7 @@ const Dashboard = () => {
                       group={group}
                       isOwner={true}
                       onDelete={handleDeleteGroup}
+                      onClick={() => handleGroupClick(group._id)}
                     />
                   </Grid>
                 ))}
@@ -473,7 +507,7 @@ const Dashboard = () => {
 
         {/* Joined Groups Tab */}
         {activeTab === 'joinedGroups' && (
-          <Box>
+          <Box sx={{ flex: 1, overflow: 'auto' }}>
             <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
               Groups You've Joined
             </Typography>
@@ -501,6 +535,7 @@ const Dashboard = () => {
                       group={group}
                       isOwner={false}
                       onLeave={handleLeaveGroup}
+                      onClick={() => handleGroupClick(group._id)}
                     />
                   </Grid>
                 ))}
@@ -539,6 +574,27 @@ const Dashboard = () => {
         )}
       </Box>
 
+      {/* Join Group Dialog */}
+      <Dialog 
+        open={joinGroupOpen} 
+        onClose={() => setJoinGroupOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Join a Group</DialogTitle>
+        <DialogContent>
+          <JoinGroupButton 
+            token={token} 
+            onGroupChange={() => {
+              handleGroupChange();
+              setJoinGroupOpen(false);
+            }} 
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setJoinGroupOpen(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
         
       <CreateGroup 
         open={createGroupOpen} 

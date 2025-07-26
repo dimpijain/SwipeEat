@@ -1,2 +1,27 @@
 @import "tailwindcss";
 
+/* src/index.css or your global CSS file */
+
+/* Ensure body and html have full height for proper centering if needed */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden; /* To prevent scrollbars from card movements */
+}
+
+/*Style for the TinderCard wrapper
+.swipe {
+  position: absolute;  Essential for stacking 
+  width: 100%;
+  height: 100%;
+  display: flex; Helps center the content inside TinderCard wrapper 
+  justify-content: center;
+  align-items: center;
+}*/
+.swipe {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.3s ease;
+}

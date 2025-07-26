@@ -15,7 +15,7 @@ const App = () => {
         <Route path="/dashboard" element={<Dashboard/>}/>
          <Route path="/login" element={<Login/>}/>
    
-         <Route path="/swipe" element={<RestaurantSwipe/>}/>
+         <Route path="/swipe/:groupId" element={<RestaurantSwipe/>}/>
       </Routes>
     
   );
