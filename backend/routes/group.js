@@ -4,6 +4,7 @@ const router = express.Router();
 const Group = require('../models/Group');
 const User = require('../models/User'); // Assuming you have a User model
 const verifyToken = require('../middleware/verifyToken');
+const Swipe = require('../models/Swipe'); // Add this
 
 // Endpoint to fetch user's created and joined groups
 router.get('/my', verifyToken, async (req, res) => {

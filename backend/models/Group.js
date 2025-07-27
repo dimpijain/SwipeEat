@@ -36,7 +36,7 @@ const groupSchema = new mongoose.Schema({
   },
   joinCode: {
     type: String,
-    unique: true,
+    //unique: true,
     required: true,
     uppercase: true,
     minlength: 6,
@@ -49,7 +49,7 @@ const groupSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Indexes for better performance
-groupSchema.index({ joinCode: 1 }, { unique: true });
+
 groupSchema.index({ createdBy: 1 });
 groupSchema.index({ 'members.user': 1 });
 
