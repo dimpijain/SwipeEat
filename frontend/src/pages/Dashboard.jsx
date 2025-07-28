@@ -298,7 +298,7 @@ const GroupDetailsModal = ({ open, onClose, group, token, onSwipeRedirect }) => 
                 setLoadingMatches(true);
                 setMatchesError(null);
                 try {
-                    const response = await axios.get(`/api/swipes/matches/${group._id}`, {
+                    const response = await axios.get(`/api/group/${group._id}/matches`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     setMatchedRestaurants(response.data.matchedRestaurants || []);

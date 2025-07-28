@@ -146,4 +146,31 @@ router.post('/:groupId/leave', verifyToken, async (req, res) => { // Matches POS
     }
 });
 
+router.get('/:groupId/matches', verifyToken, async (req, res) => {
+    try {
+        const { groupId } = req.params;
+
+        // Find the group by its ID and populate the matchedRestaurants field.
+        // The .populate() method is crucial here. It replaces the restaurant IDs
+        // in the matchedRestaurants array with the full restaurant documents.
+        // NOTE: This assumes your Group model references a 'Restaurant' model.
+        // If your restaurant collection is named differently, change 'Restaurant'.
+        const group = await Group.findById(groupId).populate('matchedRestaurants');
+
+        if (!group) {
+            return res.status(404).json({ success: false, message: 'Group not found.' });
+        }
+
+        // The frontend expects an object with a 'matchedRestaurants' key
+        return res.status(200).json({ 
+            success: true, 
+            matchedRestaurants: group.matchedRestaurants 
+        });
+
+    } catch (error) {
+        console.error('Error fetching group matches:', error);
+        return res.status(500).json({ message: 'Failed to fetch group matches.' });
+    }
+});
+
 module.exports = router;
