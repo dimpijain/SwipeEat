@@ -2,11 +2,10 @@ import axios from 'axios';
 
 // eslint-disable-next-line no-undef
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
-const NEARBY_SEARCH_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
-const PLACE_DETAILS_URL = 'https://maps.googleapis.com/maps/api/place/details/json';
-const PHOTO_URL = 'https://maps.googleapis.com/maps/api/place/photo';
-
+const GEOCODE_URL = '/gmaps/maps/api/geocode/json';
+const NEARBY_SEARCH_URL = '/gmaps/maps/api/place/nearbysearch/json';
+const PLACE_DETAILS_URL = '/gmaps/maps/api/place/details/json';
+const PHOTO_URL = '/gmaps/maps/api/place/photo';
 // Helper to construct a photo URL from a photo reference
 const getPhotoUrl = (photoReference, maxWidth = 400) => {
   if (!photoReference) return null;

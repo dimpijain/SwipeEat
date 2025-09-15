@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const groupSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
+    required: [true, 'Group name is required.'],
     trim: true
   },
   createdBy: {
@@ -22,35 +22,37 @@ const groupSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  preferences: {
-    budget: {
-      type: String,
-      enum: ['Low', 'Medium', 'High'],
-      default: 'Medium'
-    },
-    cuisine: [{
-      type: String,
-      enum: ['Indian', 'Chinese', 'Italian', 'Mexican', 'Thai']
-    }],
-    location: String
+  // ✅ MODIFIED: location is now a top-level field
+  location: {
+    type: String,
+    required: [true, 'Location is required for restaurant searches.'],
+    trim: true
   },
+  // ✅ ADDED: radius is now a required, top-level field
+  radius: {
+    type: Number,
+    required: [true, 'Search radius is required.'],
+    min: 1,
+    max: 50
+  },
+  // ✅ RENAMED: To match the backend route logic
+  cuisinePreferences: [{
+    type: String
+  }],
   joinCode: {
     type: String,
-    //unique: true,
     required: true,
     uppercase: true,
     minlength: 6,
     maxlength: 6
   },
-  matchedRestaurants: [{ // <-- ADD THIS FIELD
-        type: String, // Google Place ID
-        
-    }]
+  matchedRestaurants: [{
+    type: String, // Stores Google Place IDs
+  }]
 }, { timestamps: true });
 
-// Indexes for better performance
-
-groupSchema.index({ createdBy: 1 });
+// Indexes for better query performance
+groupSchema.index({ joinCode: 1 }, { unique: true });
 groupSchema.index({ 'members.user': 1 });
 
 module.exports = mongoose.model('Group', groupSchema);

@@ -12,12 +12,12 @@ import {
   Star, LocationOn, Phone, Language, Schedule
 } from '@mui/icons-material';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
-import { jwtDecode } from 'jwt-decode'; // Keep if you use it elsewhere, though not directly in this snippet
+import { jwtDecode } from 'jwt-decode';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// NEW: Import the Google API service
 import { getCoordinates, getNearbyRestaurants } from '../services/googleApiService';
 
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 const COLORS = {
   primary: '#FF7F7F',
   secondary: '#FFD6B0',
@@ -63,7 +63,6 @@ const RestaurantSwipe = () => {
     setToken(storedToken);
   }, [navigate]);
 
-  // --- MODIFIED: Load restaurants from Google Places API ---
   useEffect(() => {
     if (!token || !groupId) return;
 
@@ -72,31 +71,26 @@ const RestaurantSwipe = () => {
       setError(null);
 
       try {
-        // 1. Fetch group details to get location and radius
         const groupRes = await axios.get(`http://localhost:5000/api/group/${groupId}`, {
-            headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` }
         });
 
         const { location, radius } = groupRes.data.group;
 
         if (!location || !radius) {
-            throw new Error("Group location or search radius is not set.");
+          throw new Error("Group location or search radius is not set.");
         }
-        
-        // 2. Get coordinates for the group's location
-        const { lat, lng } = await getCoordinates(location);
 
-        // 3. Fetch nearby restaurants from Google
+        const { lat, lng } = await getCoordinates(location);
         const googleRestaurants = await getNearbyRestaurants(lat, lng, radius);
-        
-        // Filter out any restaurants that have already been swiped by the user in this session
+
         const alreadySwipedInDb = await axios.get(`http://localhost:5000/api/swipes/user/${groupId}`, {
-            headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` }
         });
         const swipedIds = new Set(alreadySwipedInDb.data.swipes.map(s => s.restaurantId));
 
         const filteredRestaurants = googleRestaurants.filter(
-            restaurant => !swipedIds.has(restaurant.id) && !swipedRestaurants.has(restaurant.id)
+          restaurant => !swipedIds.has(restaurant.id) && !swipedRestaurants.has(restaurant.id)
         );
 
         const reversedRestaurants = [...filteredRestaurants].reverse();
@@ -113,7 +107,7 @@ const RestaurantSwipe = () => {
     };
 
     loadRestaurants();
-  }, [groupId, token]); // Now depends on token and groupId
+  }, [groupId, token]);
 
   const outOfFrame = useCallback((id) => {
     console.log(`${id} left the screen!`);
@@ -146,7 +140,7 @@ const RestaurantSwipe = () => {
         'http://localhost:5000/api/swipes/save',
         {
           groupId,
-          restaurantId: restaurantToSwipe.id, // Now using Google Place ID
+          restaurantId: restaurantToSwipe.id,
           direction: dir
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -156,12 +150,11 @@ const RestaurantSwipe = () => {
       setCurrentIndex(prevIndex => prevIndex - 1);
 
       if (dir === 'right') {
-          toast.success(`Liked ${restaurantToSwipe.name}!`);
+        toast.success(`Liked ${restaurantToSwipe.name}!`);
       }
     } catch (err) {
       console.error('Swipe error:', err);
       setError(err.response?.data?.message || err.message || 'An unknown error occurred during swipe.');
-      // Still move to the next card to prevent getting stuck
       setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
       setCurrentIndex(prevIndex => prevIndex - 1);
     }
@@ -196,14 +189,14 @@ const RestaurantSwipe = () => {
     }
 
     if (error) {
-        return (
-            <Paper elevation={3} sx={{ p: 3, textAlign: 'center', bgcolor: COLORS.cardBackground }}>
-                <Alert severity="error">{error}</Alert>
-                <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2, bgcolor: COLORS.primary }}>
-                    Back to Groups
-                </Button>
-            </Paper>
-        );
+      return (
+        <Paper elevation={3} sx={{ p: 3, textAlign: 'center', bgcolor: COLORS.cardBackground }}>
+          <Alert severity="error">{error}</Alert>
+          <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2, bgcolor: COLORS.primary }}>
+            Back to Groups
+          </Button>
+        </Paper>
+      );
     }
 
     if (db.length === 0 || currentIndex < 0) {
@@ -322,20 +315,31 @@ const RestaurantSwipe = () => {
     ));
   }, [db, loading, error, currentIndex, handleCardSwipedByUser, outOfFrame, navigate]);
 
-
   return (
-    <Box sx={{
-      minHeight: '100vh',
-      bgcolor: COLORS.background,
-      position: 'relative'
-    }}>
-      <ToastContainer
-        position="top-center"
-        autoClose={1500}
-        hideProgressBar
-      />
+    <Box
+  sx={{
+    minHeight: "100vh",
+    bgcolor: COLORS.background,
+    position: "relative",
+  }}
+>
+  <IconButton
+    onClick={() => navigate("/dashboard")}
+    sx={{
+      position: "absolute",
+      top: 16,
+      left: 16,
+      bgcolor: COLORS.primary,
+      color: "white",
+      "&:hover": { bgcolor: COLORS.primary },
+    }}
+  >
+    <ArrowBackIcon />
+  </IconButton>
+      <ToastContainer position="top-center" autoClose={1500} hideProgressBar />
 
-      <Box sx={{ p: 3 }}>
+      {/* Centered Heading + Back to Dashboard Button */}
+      <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography
           variant="h4"
           fontWeight={700}
@@ -345,56 +349,58 @@ const RestaurantSwipe = () => {
           Discover Dining Spots
         </Typography>
 
-        <Box sx={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: 400,
-          height: 500,
-          mx: 'auto',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          {renderCards}
-        </Box>
-
-        {db.length > 0 && currentIndex >= 0 && !loading && !error && (
-          <Box sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 4,
-            mt: 4,
-            mb: 2
-          }}>
-            <IconButton
-              size="large"
-              sx={{
-                bgcolor: COLORS.secondary,
-                color: COLORS.textPrimary,
-                '&:hover': { bgcolor: COLORS.secondary }
-              }}
-              onClick={() => handleSwipeButton('left')}
-              disabled={currentIndex < 0}
-            >
-              <Close fontSize="large" />
-            </IconButton>
-            <IconButton
-              size="large"
-              sx={{
-                bgcolor: COLORS.primary,
-                color: 'white',
-                '&:hover': { bgcolor: COLORS.primary }
-              }}
-              onClick={() => handleSwipeButton('right')}
-              disabled={currentIndex < 0}
-            >
-              <Favorite fontSize="large" />
-            </IconButton>
-          </Box>
-        )}
+        
       </Box>
 
-      {/* Details Modal - No change needed here */}
+      <Box sx={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: 400,
+        height: 500,
+        mx: 'auto',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        {renderCards}
+      </Box>
+
+      {db.length > 0 && currentIndex >= 0 && !loading && !error && (
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 4,
+          mt: 4,
+          mb: 2
+        }}>
+          <IconButton
+            size="large"
+            sx={{
+              bgcolor: COLORS.secondary,
+              color: COLORS.textPrimary,
+              '&:hover': { bgcolor: COLORS.secondary }
+            }}
+            onClick={() => handleSwipeButton('left')}
+            disabled={currentIndex < 0}
+          >
+            <Close fontSize="large" />
+          </IconButton>
+          <IconButton
+            size="large"
+            sx={{
+              bgcolor: COLORS.primary,
+              color: 'white',
+              '&:hover': { bgcolor: COLORS.primary }
+            }}
+            onClick={() => handleSwipeButton('right')}
+            disabled={currentIndex < 0}
+          >
+            <Favorite fontSize="large" />
+          </IconButton>
+        </Box>
+      )}
+
+      {/* Details Modal */}
       {showDetails && currentRestaurant && (
         <Paper
           sx={{
@@ -441,17 +447,17 @@ const RestaurantSwipe = () => {
                 }}
               />
             ) : (
-                <Box sx={{
-                    height: 250,
-                    bgcolor: COLORS.secondary,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderRadius: 2,
-                    mb: 2
-                }}>
-                    <RestaurantIcon sx={{ fontSize: 100, color: COLORS.primary }} />
-                </Box>
+              <Box sx={{
+                height: 250,
+                bgcolor: COLORS.secondary,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderRadius: 2,
+                mb: 2
+              }}>
+                <RestaurantIcon sx={{ fontSize: 100, color: COLORS.primary }} />
+              </Box>
             )}
             <Typography variant="body1" color={COLORS.textPrimary} mb={1}>
               <LocationOn sx={{ verticalAlign: 'middle', mr: 1 }} />
@@ -466,8 +472,6 @@ const RestaurantSwipe = () => {
                 <Typography component="span" fontWeight="bold">Price Level:</Typography> {getPriceLevel(currentRestaurant.priceLevel)}
               </Typography>
             )}
-            {/* The following fields are not available from Nearby Search, would need Place Details API */}
-            {/* For now, they will just not render if data is absent */}
             {currentRestaurant.phoneNumber && (
               <Typography variant="body1" color={COLORS.textPrimary} mb={1}>
                 <Phone sx={{ verticalAlign: 'middle', mr: 1 }} />

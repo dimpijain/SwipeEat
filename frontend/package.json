@@ -30,6 +30,7 @@
     "react-swipeable": "^7.0.2",
     "react-tinder-card": "^1.6.4",
     "react-toastify": "^11.0.5",
+    "socket.io-client": "^4.8.1",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {

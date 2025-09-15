@@ -1,8 +1,9 @@
 require('dotenv').config();
+const http  =require('http')
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-
+const { Server } = require("socket.io");
 const app = express();
 
 // Middleware
@@ -11,7 +12,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-
+const server = http.createServer(app);
 // MongoDB connection
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/SwipeEat';
 mongoose.connect(mongoURI, {
@@ -21,7 +22,12 @@ mongoose.connect(mongoURI, {
   .catch((err) => console.error(err));
 
 // Routes will be added here later
-
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173", // Your React app's URL
+    methods: ["GET", "POST"]
+  }
+});
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
