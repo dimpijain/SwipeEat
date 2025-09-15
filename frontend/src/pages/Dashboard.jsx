@@ -25,6 +25,10 @@ import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import moment from 'moment';
 
+// NEW: Import the Google API service
+import { getRestaurantDetails } from '../services/googleApiService';
+
+
 const COLORS = {
   primary: '#FF7F7F',
   secondary: '#FFD6B0',
@@ -91,10 +95,7 @@ const Sidebar = ({ username, onLogout, open, onClose }) => (
         height: '100vh',
         zIndex: 1000,
         boxShadow: 6,
-        // Added left: 0 to ensure it's on the left edge when open
         left: 0,
-        // For the slide animation, need to consider where it slides from/to
-        // Slide direction="right" means it slides in from the left
       }}
     >
       <Box>
@@ -286,7 +287,7 @@ const JoinGroupForm = ({ token, onGroupChange }) => {
   );
 };
 
-
+// --- MODIFIED: GroupDetailsModal now fetches details from Google ---
 const GroupDetailsModal = ({ open, onClose, group, token, onSwipeRedirect }) => {
     const [matchedRestaurants, setMatchedRestaurants] = useState([]);
     const [loadingMatches, setLoadingMatches] = useState(false);
@@ -298,10 +299,22 @@ const GroupDetailsModal = ({ open, onClose, group, token, onSwipeRedirect }) => 
                 setLoadingMatches(true);
                 setMatchesError(null);
                 try {
+                    // 1. Fetch the list of matched restaurant IDs from your backend
                     const response = await axios.get(`/api/group/${group._id}/matches`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
-                    setMatchedRestaurants(response.data.matchedRestaurants || []);
+                    
+                    const matchedIds = response.data.matchedRestaurantIds || [];
+
+                    if (matchedIds.length > 0) {
+                        // 2. Fetch details for each matched ID from Google using Promise.all
+                        const restaurantDetailsPromises = matchedIds.map(id => getRestaurantDetails(id));
+                        const restaurantsWithDetails = await Promise.all(restaurantDetailsPromises);
+                        setMatchedRestaurants(restaurantsWithDetails);
+                    } else {
+                        setMatchedRestaurants([]);
+                    }
+
                 } catch (err) {
                     console.error('Error fetching matched restaurants for modal:', err);
                     setMatchesError('Failed to load matched restaurants.');
@@ -454,8 +467,8 @@ const Dashboard = () => {
   const [groupDetailsModalOpen, setGroupDetailsModalOpen] = useState(false);
   const [selectedGroupForDetails, setSelectedGroupForDetails] = useState(null);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true); // Start open by default
-  const EVENT_PANEL_WIDTH = 320; // Define a consistent width for the event panel
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const EVENT_PANEL_WIDTH = 320;
 
   const { createdGroups, joinedGroups, loading, error, refetch } = useGroups(token);
 
@@ -556,18 +569,8 @@ const Dashboard = () => {
                 draggable
                 pauseOnHover
                 theme="light"
-                toastStyle={{
-                    backgroundColor: COLORS.cardBackground,
-                    color: COLORS.textPrimary,
-                    borderLeft: `4px solid ${COLORS.primary}`,
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                }}
-                progressStyle={{
-                    background: COLORS.primary
-                }}
             />
 
-            {/* Sidebar with sliding animation (left column) */}
             <Sidebar
                 username={username}
                 onLogout={handleLogout}
@@ -575,34 +578,29 @@ const Dashboard = () => {
                 onClose={() => setSidebarOpen(false)}
             />
 
-            {/* Main Content Area (middle column) */}
             <Box sx={{
-                flexGrow: 1, // Allows this box to take up available space
+                flexGrow: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 px: 4,
                 py: 3,
-                overflowY: 'auto', // Allow scrolling for this section
+                overflowY: 'auto',
                 maxHeight: '100vh',
-                position: 'relative', // For open sidebar button positioning
-                // Dynamically adjust padding-left based on sidebar state
-                pl: sidebarOpen ? '320px' : '32px', // Sidebar width + padding
-                pr: `${EVENT_PANEL_WIDTH + 32}px`, // Adjust padding right based on event panel width + padding
+                position: 'relative',
+                pl: sidebarOpen ? '320px' : '32px',
+                pr: `${EVENT_PANEL_WIDTH + 32}px`,
                 transition: 'padding-left 0.3s ease-in-out',
-                // For smaller screens, the event panel might stack, so adjust pr for that too.
-                // You might need media queries for more precise responsive behavior.
-                '@media (max-width:960px)': { // md breakpoint for Grid
-                    pr: '32px', // When event panel stacks, remove its reserved space
+                '@media (max-width:960px)': {
+                    pr: '32px',
                 }
             }}>
-                {/* Button to open sidebar */}
                 {!sidebarOpen && (
                     <IconButton
                         onClick={() => setSidebarOpen(true)}
                         sx={{
-                            position: 'fixed', // Fixed so it stays when scrolling main content
+                            position: 'fixed',
                             top: 16,
-                            left: 16, // Position it outside the dynamic padding of main content
+                            left: 16,
                             bgcolor: COLORS.primary,
                             color: 'white',
                             '&:hover': { bgcolor: COLORS.primary },
@@ -644,7 +642,6 @@ const Dashboard = () => {
                     />
                 </Tabs>
 
-                {/* Grid for main content - groups and action cards */}
                 {activeTab === 'myGroups' && (
                     <Box sx={{ flex: 1 }}>
                         <Typography variant="h5" color={COLORS.textPrimary} mb={3}>
@@ -695,7 +692,7 @@ const Dashboard = () => {
                             Group Actions
                         </Typography>
 
-                        <Grid container spacing={3} mb={4}> {/* Added mb for consistent spacing */}
+                        <Grid container spacing={3} mb={4}>
                             <Grid item xs={12} sm={6}>
                                 <Card sx={{
                                     bgcolor: COLORS.cardBackground,
@@ -774,7 +771,7 @@ const Dashboard = () => {
                             Group Actions
                         </Typography>
 
-                        <Grid container spacing={3} mb={4}> {/* Added mb for consistent spacing */}
+                        <Grid container spacing={3} mb={4}>
                             <Grid item xs={12} sm={6}>
                                 <Card sx={{
                                     bgcolor: COLORS.cardBackground,
@@ -802,29 +799,27 @@ const Dashboard = () => {
                 )}
             </Box>
 
-            {/* Right Event Panel (full column on the right) */}
             <Box
                 sx={{
                     width: EVENT_PANEL_WIDTH,
-                    bgcolor: COLORS.sidebarBackground, // Using sidebar background for consistency
+                    bgcolor: COLORS.sidebarBackground,
                     display: 'flex',
                     flexDirection: 'column',
                     p: 3,
                     borderLeft: `2px solid ${COLORS.cardBackground}`,
-                    position: 'sticky', // Makes it sticky within its parent flex container
+                    position: 'sticky',
                     top: 0,
-                    height: '100vh', // Full viewport height
-                    overflowY: 'auto', // Allow internal scrolling if content exceeds height
+                    height: '100vh',
+                    overflowY: 'auto',
                     boxShadow: 6,
-                    // Hide on smaller screens or stack it if md breakpoint reached
                     '@media (max-width:960px)': {
-                        display: 'none', // Hide on small/medium screens for now, can be adjusted
+                        display: 'none',
                     }
                 }}
             >
-                <Paper elevation={0} sx={{ // Removed elevation as parent box already has shadow
-                    bgcolor: 'transparent', // Make it transparent to use parent background
-                    p: 0, // Remove padding as parent box has it
+                <Paper elevation={0} sx={{
+                    bgcolor: 'transparent',
+                    p: 0,
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
@@ -839,7 +834,7 @@ const Dashboard = () => {
                         defaultValue={moment()}
                         readOnly
                         sx={{
-                            width: '100%', // Make calendar responsive to its container width
+                            width: '100%',
                             '.MuiCalendarPicker-root': { width: '100%' },
                             '.MuiPickersDay-root': { color: COLORS.textPrimary },
                             '.MuiPickersDay-root.Mui-selected': { bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary } },
@@ -866,7 +861,6 @@ const Dashboard = () => {
                 </Paper>
             </Box>
 
-            {/* Modals/Dialogs */}
             <GroupDetailsModal
                 open={groupDetailsModalOpen}
                 onClose={() => setGroupDetailsModalOpen(false)}

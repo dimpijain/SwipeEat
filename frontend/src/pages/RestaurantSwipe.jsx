@@ -15,7 +15,8 @@ import RestaurantIcon from '@mui/icons-material/Restaurant';
 import { jwtDecode } from 'jwt-decode'; // Keep if you use it elsewhere, though not directly in this snippet
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import mockRestaurants from '../mockRestaurants'; // Ensure this path is correct
+// NEW: Import the Google API service
+import { getCoordinates, getNearbyRestaurants } from '../services/googleApiService';
 
 const COLORS = {
   primary: '#FF7F7F',
@@ -32,32 +33,27 @@ const RestaurantSwipe = () => {
   const navigate = useNavigate();
   const [db, setDb] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null); // Keep error state for potential API errors
+  const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lastDirection, setLastDirection] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [currentRestaurant, setCurrentRestaurant] = useState(null);
   const [token, setToken] = useState('');
-  const [swipedRestaurants, setSwipedRestaurants] = useState(new Set()); // Tracks IDs of all swiped restaurants
+  const [swipedRestaurants, setSwipedRestaurants] = useState(new Set());
 
-  // Use a ref to keep track of the current index without re-rendering issues
   const currentIndexRef = useRef(currentIndex);
-  const childRefs = useRef([]); // This will hold refs for each TinderCard
+  const childRefs = useRef([]);
 
-  // Effect to update currentIndexRef when currentIndex changes
   useEffect(() => {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
 
-  // Effect to initialize/re-initialize childRefs when db changes
   useEffect(() => {
-    // Only re-initialize if the length of db has changed, or on initial load
     if (childRefs.current.length !== db.length) {
       childRefs.current = Array(db.length).fill(0).map((_, i) => childRefs.current[i] || React.createRef());
     }
   }, [db]);
 
-  // Authenticate user with token
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     if (!storedToken) {
@@ -67,187 +63,117 @@ const RestaurantSwipe = () => {
     setToken(storedToken);
   }, [navigate]);
 
-  // Load restaurants based on groupId and swipedRestaurants
+  // --- MODIFIED: Load restaurants from Google Places API ---
   useEffect(() => {
     if (!token || !groupId) return;
 
-    const loadRestaurants = () => {
+    const loadRestaurants = async () => {
       setLoading(true);
-      setError(null); // Clear previous errors
+      setError(null);
 
-      // Simulate API call delay for mock data
-      setTimeout(() => {
-        // Filter out restaurants that have already been swiped in the current session
-        const filteredRestaurants = mockRestaurants.filter(
-          restaurant => !swipedRestaurants.has(restaurant.id)
+      try {
+        // 1. Fetch group details to get location and radius
+        const groupRes = await axios.get(`http://localhost:5000/api/group/${groupId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const { location, radius } = groupRes.data.group;
+
+        if (!location || !radius) {
+            throw new Error("Group location or search radius is not set.");
+        }
+        
+        // 2. Get coordinates for the group's location
+        const { lat, lng } = await getCoordinates(location);
+
+        // 3. Fetch nearby restaurants from Google
+        const googleRestaurants = await getNearbyRestaurants(lat, lng, radius);
+        
+        // Filter out any restaurants that have already been swiped by the user in this session
+        const alreadySwipedInDb = await axios.get(`http://localhost:5000/api/swipes/user/${groupId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const swipedIds = new Set(alreadySwipedInDb.data.swipes.map(s => s.restaurantId));
+
+        const filteredRestaurants = googleRestaurants.filter(
+            restaurant => !swipedIds.has(restaurant.id) && !swipedRestaurants.has(restaurant.id)
         );
-        // Reverse the array so the last element is on top (Tinder-like stack)
+
         const reversedRestaurants = [...filteredRestaurants].reverse();
 
         setDb(reversedRestaurants);
-        // Set currentIndex to the last element of the reversed array
         setCurrentIndex(reversedRestaurants.length - 1);
+      } catch (err) {
+        console.error("Failed to load restaurants:", err);
+        setError(err.message || 'An error occurred while fetching dining spots.');
+        setDb([]);
+      } finally {
         setLoading(false);
-      }, 500);
+      }
     };
 
     loadRestaurants();
-  }, [groupId, token, swipedRestaurants]); // Re-run when swipedRestaurants changes
+  }, [groupId, token]); // Now depends on token and groupId
 
-  // Callback for when a card leaves the screen (TinderCard's internal mechanism)
-  // This is called AFTER the animation completes.
   const outOfFrame = useCallback((id) => {
     console.log(`${id} left the screen!`);
-    // The `swipe` function below already handles adding to `swipedRestaurants`
-    // and decrementing `currentIndex`. This is primarily for logging/debugging TinderCard's lifecycle.
   }, []);
 
-  // Main swipe logic for both button clicks and user gestures
   const swipe = useCallback(async (dir) => {
-    const targetIndex = currentIndexRef.current; // Get the most current index from ref
+    const targetIndex = currentIndexRef.current;
 
-    // Check if there are cards left to swipe
     if (targetIndex < 0 || !db[targetIndex]) {
       console.log('No more cards to swipe or invalid target index.');
-      setLastDirection(dir); // Still update direction if it was a button press on empty stack
+      setLastDirection(dir);
       return;
     }
 
     const restaurantToSwipe = db[targetIndex];
     const cardRef = childRefs.current[targetIndex];
 
-    // Crucial check: Ensure the ref exists and is attached to a DOM node
     if (!cardRef || !cardRef.current) {
-      console.warn(`Ref for index ${targetIndex} is null or undefined. Cannot programmatically swipe.`);
-      // If ref is not ready, we can still proceed to decrement the index
-      // and update swiped status, but the animation won't happen.
-      // This helps prevent being stuck on a card that can't be swiped visually.
+      console.warn(`Ref for index ${targetIndex} is null or undefined.`);
       setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-      setCurrentIndex(prevIndex => prevIndex - 1); // Immediately move to the next card
-      toast.info('Card not ready for animation, but swipe processed.', {
-        position: "top-center",
-        autoClose: 1500,
-        hideProgressBar: true
-      });
+      setCurrentIndex(prevIndex => prevIndex - 1);
       return;
     }
 
     try {
-      // Programmatically swipe the card to trigger the animation
-      await cardRef.current.swipe(dir); // This triggers the animation and subsequently onCardLeftScreen
-
-      // Set last direction immediately for UI feedback
+      await cardRef.current.swipe(dir);
       setLastDirection(dir);
 
-      // Make API call to save swipe
-      const response = await axios.post(
+      await axios.post(
         'http://localhost:5000/api/swipes/save',
         {
           groupId,
-          restaurantId: restaurantToSwipe.id,
-          direction: dir // 'left' or 'right'
+          restaurantId: restaurantToSwipe.id, // Now using Google Place ID
+          direction: dir
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Check for success (201 Created or 200 OK for existing swipe/left swipe)
-      if (response.status === 201 || response.status === 200) {
-        // Add to swipedRestaurants set to ensure it doesn't reappear in this session
-        setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-        // Decrement current index to show the next card
-        setCurrentIndex(prevIndex => prevIndex - 1);
+      setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
+      setCurrentIndex(prevIndex => prevIndex - 1);
 
-        if (dir === 'right') {
-          toast.success(`Liked ${restaurantToSwipe.name}!`, {
-              position: "top-center",
-              autoClose: 1000,
-              hideProgressBar: true
-          });
-        } else {
-          toast.info(`Skipped ${restaurantToSwipe.name}!`, {
-            position: "top-center",
-            autoClose: 1000,
-            hideProgressBar: true
-          });
-        }
-        console.log(`Successfully processed swipe for ${restaurantToSwipe.name}`);
-      } else {
-        // This block catches unexpected successful statuses (e.g., 204 No Content if your API changes)
-        toast.error(`Unexpected response status: ${response.status}. Failed to save swipe.`, {
-          position: "top-center",
-          autoClose: 2000,
-          hideProgressBar: true
-        });
+      if (dir === 'right') {
+          toast.success(`Liked ${restaurantToSwipe.name}!`);
       }
     } catch (err) {
       console.error('Swipe error:', err);
       setError(err.response?.data?.message || err.message || 'An unknown error occurred during swipe.');
-
-      if (err.response) {
-        // Handle specific API error responses
-        if (err.response.status === 409) { // Conflict: already swiped
-          console.log(`Restaurant ${restaurantToSwipe.name} already swiped.`);
-          setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-          setCurrentIndex(prevIndex => prevIndex - 1); // Still move to the next card
-          toast.info(`Already swiped ${restaurantToSwipe.name}.`, {
-            position: "top-center",
-            autoClose: 1500,
-            hideProgressBar: true
-          });
-        } else if (err.response.status === 400 || err.response.status === 403 || err.response.status === 404) {
-          // Bad Request, Forbidden, Not Found
-          toast.error(`Error: ${err.response.data.message}`, {
-            position: "top-center",
-            autoClose: 3000,
-            hideProgressBar: true
-          });
-          // For these errors, you might or might not want to decrement the index,
-          // depending on whether the swipe was genuinely invalid.
-          // For now, let's decrement to move on from the problematic card.
-          setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-          setCurrentIndex(prevIndex => prevIndex - 1);
-        } else {
-          // General 500 or other unhandled errors
-          toast.error(`Server error: ${err.response.data.message || 'Please try again.'}`, {
-            position: "top-center",
-            autoClose: 3000,
-            hideProgressBar: true
-          });
-          // Decrement index to allow user to continue if it's a transient server issue
-          setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-          setCurrentIndex(prevIndex => prevIndex - 1);
-        }
-      } else {
-        // Network error or other client-side error before response
-        toast.error(`Network error: ${err.message}`, {
-          position: "top-center",
-          autoClose: 3000,
-          hideProgressBar: true
-        });
-        // Decrement index to allow user to continue
-        setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
-        setCurrentIndex(prevIndex => prevIndex - 1);
-      }
+      // Still move to the next card to prevent getting stuck
+      setSwipedRestaurants(prev => new Set(prev).add(restaurantToSwipe.id));
+      setCurrentIndex(prevIndex => prevIndex - 1);
     }
-  }, [groupId, db, token, swipedRestaurants]); // Added swipedRestaurants to dependencies for `setSwipedRestaurants` update within `swipe`
+  }, [groupId, db, token]);
 
-  // Handler for manual button swipes
   const handleSwipeButton = (dir) => {
-    swipe(dir); // Call the main swipe logic
+    swipe(dir);
   };
 
-  // Handler for TinderCard's onSwipe event (user gestures)
   const handleCardSwipedByUser = useCallback((dir, id) => {
-    // When a user physically swipes, this is called.
-    // The `swipe` function already handles the API call and state updates
-    // (including `currentIndex` and `swipedRestaurants`).
-    // So, we just need to set the `lastDirection` for immediate UI feedback.
     setLastDirection(dir);
-    // The `swipe` function will be called internally by TinderCard's animation
-    // completing, or if a button was pressed, it calls `swipe` directly.
-    // No need to call `swipe(dir)` again here if TinderCard itself triggers the visual swipe.
-    // This function is mainly here to capture user-initiated swipe direction for `lastDirection`.
-  }, []); // No dependencies needed for this simple setter
+  }, []);
 
   const handleCardClick = (restaurant) => {
     setCurrentRestaurant(restaurant);
@@ -264,13 +190,23 @@ const RestaurantSwipe = () => {
     return '$'.repeat(level);
   };
 
-  // Memoize the cards to prevent unnecessary re-renders of TinderCard components
   const renderCards = useMemo(() => {
     if (loading) {
       return <CircularProgress sx={{ color: COLORS.primary }} />;
     }
 
-    if (db.length === 0 && currentIndex < 0) {
+    if (error) {
+        return (
+            <Paper elevation={3} sx={{ p: 3, textAlign: 'center', bgcolor: COLORS.cardBackground }}>
+                <Alert severity="error">{error}</Alert>
+                <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2, bgcolor: COLORS.primary }}>
+                    Back to Groups
+                </Button>
+            </Paper>
+        );
+    }
+
+    if (db.length === 0 || currentIndex < 0) {
       return (
         <Paper elevation={3} sx={{
           p: 3,
@@ -295,19 +231,17 @@ const RestaurantSwipe = () => {
       );
     }
 
-    // Render cards from the current index down to 0 for the stack effect
-    // This only renders the active cards that the user can interact with.
     return db.map((restaurant, index) => (
-      index <= currentIndex ? ( // Only render cards at or below the current index
+      index <= currentIndex ? (
         <TinderCard
-          ref={childRefs.current[index]} // Assign the ref based on the original index in the `db` array
+          ref={childRefs.current[index]}
           key={restaurant.id}
           onSwipe={(dir) => handleCardSwipedByUser(dir, restaurant.id)}
           onCardLeftScreen={() => outOfFrame(restaurant.id)}
           preventSwipe={['up', 'down']}
           swipeThreshold={50}
           flickOnSwipe={true}
-          className="swipe" // Ensure this class is styled correctly for positioning
+          className="swipe"
         >
           <Card
             onClick={() => handleCardClick(restaurant)}
@@ -386,7 +320,7 @@ const RestaurantSwipe = () => {
         </TinderCard>
       ) : null
     ));
-  }, [db, loading, currentIndex, handleCardSwipedByUser, outOfFrame, navigate]);
+  }, [db, loading, error, currentIndex, handleCardSwipedByUser, outOfFrame, navigate]);
 
 
   return (
@@ -397,24 +331,8 @@ const RestaurantSwipe = () => {
     }}>
       <ToastContainer
         position="top-center"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        toastStyle={{
-          backgroundColor: COLORS.cardBackground,
-          color: COLORS.textPrimary,
-          borderLeft: `4px solid ${COLORS.primary}`,
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-        }}
-        progressStyle={{
-          background: COLORS.primary
-        }}
+        autoClose={1500}
+        hideProgressBar
       />
 
       <Box sx={{ p: 3 }}>
@@ -437,10 +355,10 @@ const RestaurantSwipe = () => {
           justifyContent: 'center',
           alignItems: 'center'
         }}>
-          {renderCards} {/* Render memoized cards */}
+          {renderCards}
         </Box>
 
-        {db.length > 0 && currentIndex >= 0 && !loading && (
+        {db.length > 0 && currentIndex >= 0 && !loading && !error && (
           <Box sx={{
             display: 'flex',
             justifyContent: 'center',
@@ -456,7 +374,7 @@ const RestaurantSwipe = () => {
                 '&:hover': { bgcolor: COLORS.secondary }
               }}
               onClick={() => handleSwipeButton('left')}
-              disabled={currentIndex < 0} // Disable if no more cards
+              disabled={currentIndex < 0}
             >
               <Close fontSize="large" />
             </IconButton>
@@ -468,26 +386,15 @@ const RestaurantSwipe = () => {
                 '&:hover': { bgcolor: COLORS.primary }
               }}
               onClick={() => handleSwipeButton('right')}
-              disabled={currentIndex < 0} // Disable if no more cards
+              disabled={currentIndex < 0}
             >
               <Favorite fontSize="large" />
             </IconButton>
           </Box>
         )}
-
-        {lastDirection && (
-          <Typography
-            variant="h6"
-            color={lastDirection === 'right' ? COLORS.primary : COLORS.textPrimary}
-            textAlign="center"
-            sx={{ mt: 2 }}
-          >
-            You swiped {lastDirection === 'right' ? 'right 👍' : 'left 👎'}
-          </Typography>
-        )}
       </Box>
 
-      {/* Restaurant Details Modal/Sidebar */}
+      {/* Details Modal - No change needed here */}
       {showDetails && currentRestaurant && (
         <Paper
           sx={{
@@ -559,6 +466,8 @@ const RestaurantSwipe = () => {
                 <Typography component="span" fontWeight="bold">Price Level:</Typography> {getPriceLevel(currentRestaurant.priceLevel)}
               </Typography>
             )}
+            {/* The following fields are not available from Nearby Search, would need Place Details API */}
+            {/* For now, they will just not render if data is absent */}
             {currentRestaurant.phoneNumber && (
               <Typography variant="body1" color={COLORS.textPrimary} mb={1}>
                 <Phone sx={{ verticalAlign: 'middle', mr: 1 }} />
