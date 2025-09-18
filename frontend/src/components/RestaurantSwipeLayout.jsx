@@ -1,20 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TinderCard from 'react-tinder-card';
-import api from '../api'; 
-import socket from '../socket'; 
-import {
-  Box, Card, CardMedia, CardContent, Typography,
-  IconButton, Chip, Button, Paper, CircularProgress, Alert, AppBar, Toolbar, Badge, Fab
-} from '@mui/material';
-import {
-  Close, Favorite, ArrowBack, Star, CheckCircleOutline, Fastfood, ThumbUp, Chat as ChatIcon
-} from '@mui/icons-material';
+import { Box, Card, CardMedia, CardContent, Typography, IconButton, Chip, Button, Paper, Alert, AppBar, Toolbar, Badge } from '@mui/material';
+import { Close, Favorite, ArrowBack, Star, CheckCircleOutline, Fastfood, ThumbUp } from '@mui/icons-material';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/ReactToastify.css';
-import { getNearbyRestaurants } from '../services/googleApiService';
-import ChatDrawer from '../components/ChatDrawer';
 
 const COLORS = {
   primary: '#FF7F7F',
@@ -25,94 +14,14 @@ const COLORS = {
   accent: '#B5EAD7'
 };
 
-const RestaurantSwipe = () => {
-  const { groupId } = useParams();
+const RestaurantSwipeLayout = ({ restaurants, currentIndex, votes, onSwipe, error }) => {
   const navigate = useNavigate();
-
-  // State for the user's individual swipe deck
-  const [restaurants, setRestaurants] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // State for real-time features
-  const [votes, setVotes] = useState({});
-  const [isChatOpen, setIsChatOpen] = useState(false);
-
   const childRefs = useRef([]);
-
-  useEffect(() => {
-    if (restaurants.length > 0) {
-      childRefs.current = Array(restaurants.length).fill(0).map((_, i) => childRefs.current[i] || React.createRef());
-    }
-  }, [restaurants.length]);
-
-  // This useEffect handles all Socket.io communication
-  useEffect(() => {
-    socket.connect();
-    socket.emit('joinGroup', groupId);
-
-    const handleMatchFound = ({ restaurantId }) => {
-      toast.success("It's a match! Redirecting...");
-      navigate(`/group/${groupId}/match/${restaurantId}`);
-    };
-    const handleVoteUpdate = (newVotes) => {
-      setVotes(newVotes);
-    };
-
-    socket.on('matchFound', handleMatchFound);
-    socket.on('voteUpdate', handleVoteUpdate);
-
-    return () => {
-      socket.off('matchFound', handleMatchFound);
-      socket.off('voteUpdate', handleVoteUpdate);
-      socket.disconnect();
-    };
-  }, [groupId, navigate]);
   
-  // This useEffect fetches the restaurant list for this specific user
-  useEffect(() => {
-    const loadRestaurants = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const groupRes = await api.get(`/api/group/${groupId}`);
-        const { location, radius } = groupRes.data.group;
+  if (restaurants.length > 0) {
+    childRefs.current = Array(restaurants.length).fill(0).map((_, i) => childRefs.current[i] || React.createRef());
+  }
 
-        if (!location || !radius) throw new Error("Group details are incomplete.");
-        
-        const googleRestaurants = await getNearbyRestaurants(location, radius); 
-        const alreadySwipedRes = await api.get(`/api/swipes/user/${groupId}`);
-        const swipedIds = new Set(alreadySwipedRes.data.swipes.map(s => s.restaurantId));
-
-        const filteredRestaurants = googleRestaurants.filter(r => !swipedIds.has(r.id));
-        const reversedRestaurants = [...filteredRestaurants].reverse();
-
-        setRestaurants(reversedRestaurants);
-        setCurrentIndex(reversedRestaurants.length - 1);
-      } catch (err) {
-        setError(err.message || 'Could not fetch restaurants.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadRestaurants();
-  }, [groupId]);
-
-  // This function is called after a card is swiped (by drag or button)
-  const handleSwipe = (direction, restaurantId) => {
-    // 1. Persist the swipe to the database
-    api.post('/api/swipes/save', { groupId, restaurantId, direction });
-    
-    // 2. If it was a right swipe, notify the server for the live vote count
-    if (direction === 'right') {
-      socket.emit('userSwipedRight', { groupId, restaurantId });
-    }
-    
-    // 3. Advance the card for this user
-    setCurrentIndex(prevIndex => prevIndex - 1);
-  };
-  
   const handleSwipeButton = async (dir) => {
     if (currentIndex < 0 || !restaurants[currentIndex]) return;
     await childRefs.current[currentIndex]?.current?.swipe(dir);
@@ -120,19 +29,10 @@ const RestaurantSwipe = () => {
   
   const getPriceLevel = (level) => level ? '$'.repeat(level) : '';
 
-  const renderContent = useMemo(() => {
-    if (loading) {
-      return (
-        <Box sx={{display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center', alignItems: 'center'}}>
-            <CircularProgress />
-            <Typography>Finding restaurants...</Typography>
-        </Box>
-      );
-    }
-    
+  const renderCards = useMemo(() => {
     if (error) {
       return (
-        <Paper elevation={4} sx={{ p: 4, textAlign: 'center', borderRadius: 4 }}>
+        <Paper elevation={4} sx={{ p: 4, textAlign: 'center', borderRadius: 4, bgcolor: COLORS.cardBackground }}>
           <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
           <Button variant="contained" onClick={() => navigate('/dashboard')} sx={{ bgcolor: COLORS.primary }}>
             Back to Dashboard
@@ -145,18 +45,19 @@ const RestaurantSwipe = () => {
       return (
         <Paper elevation={4} sx={{ p: 4, textAlign: 'center', borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
             <CheckCircleOutline sx={{ fontSize: 60, color: COLORS.accent }} />
-            <Typography variant="h5" fontWeight={700}>All Done!</Typography>
-            <Typography color="text.secondary">You've swiped through all available restaurants.</Typography>
+            <Typography variant="h5" fontWeight={700}>Session Finished!</Typography>
+            <Typography color="text.secondary">Waiting for final results from the group...</Typography>
         </Paper>
       );
     }
     
     return restaurants.map((restaurant, index) => (
+      // ✅ FIX: Only render the card if its index is part of the current stack.
       index <= currentIndex ? (
         <TinderCard
           ref={childRefs.current[index]}
           key={restaurant.id}
-          onSwipe={(dir) => handleSwipe(dir, restaurant.id)}
+          onSwipe={(dir) => onSwipe(dir, restaurant.id)}
           preventSwipe={['up', 'down']}
           className="swipe"
           style={{ zIndex: restaurants.length - index }}
@@ -185,21 +86,10 @@ const RestaurantSwipe = () => {
         </TinderCard>
       ) : null
     ));
-  }, [restaurants, currentIndex, loading, error, votes, navigate]);
+  }, [restaurants, currentIndex, votes, error, navigate]);
 
   return (
-    <Box sx={{
-      minHeight: '100vh',
-      background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.secondary} 100%)`,
-      position: 'relative',
-      overflow: 'hidden',
-      '&::before': {
-        content: '""', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundImage: `url('https://www.heropatterns.com/uploads/pattern/227/food-transparent-1583182801.svg')`,
-        backgroundRepeat: 'repeat', backgroundSize: '400px', opacity: 0.05, zIndex: 0
-      }
-    }}>
-      <ToastContainer position="top-center" autoClose={2000} hideProgressBar />
+    <Box sx={{ minHeight: '100vh', background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.secondary} 100%)`, position: 'relative', overflow: 'hidden' }}>
       <AppBar position="static" sx={{ bgcolor: 'transparent', boxShadow: 'none', zIndex: 1 }}>
         <Toolbar>
           <IconButton onClick={() => navigate('/dashboard')} sx={{ color: COLORS.textPrimary }}><ArrowBack /></IconButton>
@@ -212,27 +102,15 @@ const RestaurantSwipe = () => {
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2, gap: 3, zIndex: 1 }}>
         <Typography variant="h4" fontWeight={700} color={COLORS.textPrimary} textAlign="center">Discover Dining Spots</Typography>
         <Box sx={{ position: 'relative', width: '100%', maxWidth: 350, height: 500, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          {renderContent}
+          {renderCards}
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, alignItems: 'center', height: 80, mt: 2 }}>
           <IconButton onClick={() => handleSwipeButton('left')} sx={{ bgcolor: 'white', color: COLORS.textPrimary, boxShadow: 3, width: 64, height: 64, transition: 'transform 0.2s', '&:hover': { bgcolor: 'white', transform: 'scale(1.1)' } }}><Close sx={{ fontSize: 32 }} /></IconButton>
           <IconButton onClick={() => handleSwipeButton('right')} sx={{ bgcolor: COLORS.primary, color: 'white', boxShadow: 3, width: 80, height: 80, transition: 'transform 0.2s', '&:hover': { bgcolor: COLORS.primary, transform: 'scale(1.1)' } }}><Favorite sx={{ fontSize: 40 }}/></IconButton>
         </Box>
       </Box>
-       <Fab 
-        color="primary" 
-        sx={{ position: 'absolute', bottom: 16, right: 16, zIndex: 2 }}
-        onClick={() => setIsChatOpen(true)}
-      >
-        <ChatIcon />
-      </Fab>
-      <ChatDrawer 
-        groupId={groupId}
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-      />
     </Box>
   );
 };
 
-export default RestaurantSwipe;
+export default RestaurantSwipeLayout;

@@ -4,7 +4,7 @@ import Homepage from './pages/Homepage';
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
-
+import MatchScreen from './components/MatchScreen';
 import RestaurantSwipe from './pages/RestaurantSwipe';
 const App = () => {
   return (
@@ -14,7 +14,7 @@ const App = () => {
         <Route path="/register" element={<Register/>}/>
         <Route path="/dashboard" element={<Dashboard/>}/>
          <Route path="/login" element={<Login/>}/>
-   
+           <Route path="/group/:groupId/match/:restaurantId" element={<MatchScreen />} />
          <Route path="/swipe/:groupId" element={<RestaurantSwipe/>}/>
       </Routes>
     

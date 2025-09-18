@@ -1,49 +1,85 @@
 require('dotenv').config();
-const http  =require('http')
+const http = require('http');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const { Server } = require("socket.io");
+
 const app = express();
+const server = http.createServer(app);
 
 // Middleware
-app.use(cors({
-  origin: 'http://localhost:5173', // Your frontend URL
-  credentials: true
-}));
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
-const server = http.createServer(app);
+
 // MongoDB connection
-const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/SwipeEat';
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('MongoDB connected'))
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error(err));
 
-// Routes will be added here later
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Your React app's URL
+    origin: "http://localhost:5173",
     methods: ["GET", "POST"]
   }
 });
-const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);
 
-const groupRoutes = require('./routes/group');
-app.use('/api/group', groupRoutes);
+// Make io accessible to your routes
+app.set('socketio', io);
 
-// const swipesRoute = require('./routes/swipes');
-// app.use('/api/swipe', swipesRoute);
+// Socket.io only needs to manage rooms now
+io.on('connection', (socket) => {
+  console.log('✅ A user connected:', socket.id);
 
-const restaurant=require('./routes/restaurants');
-app.use('/api/restaurants',restaurant);
+  socket.on('joinGroup', (groupId) => {
+    socket.join(groupId);
+    console.log(`User ${socket.id} joined group room: ${groupId}`);
+  });
 
-const swipes = require('./routes/swipes');
-app.use('/api/swipes', swipes);
+  socket.on('disconnect', () => {
+    console.log('❌ User disconnected:', socket.id);
+  });
+});
+// ... (Your existing server setup: express, http, cors, etc.)
+
+// ✅ ADDED: In-memory storage for live vote counts for the async model
+const groupVotes = {}; 
+
+io.on('connection', (socket) => {
+  console.log('✅ A user connected:', socket.id);
+
+  socket.on('joinGroup', (groupId) => {
+    socket.join(groupId);
+    console.log(`User ${socket.id} joined group room: ${groupId}`);
+    // When a new user joins, send them the current vote counts
+    socket.emit('voteUpdate', groupVotes[groupId] || {});
+  });
+
+  // ✅ ADDED: Handler for right swipes
+  socket.on('userSwipedRight', ({ groupId, restaurantId }) => {
+    if (!groupVotes[groupId]) groupVotes[groupId] = {};
+    groupVotes[groupId][restaurantId] = (groupVotes[groupId][restaurantId] || 0) + 1;
+    // Broadcast the new vote counts to everyone in the group
+    io.in(groupId).emit('voteUpdate', groupVotes[groupId]);
+  });
+  
+  // ✅ ADDED: Handler for chat messages
+  socket.on('sendMessage', (messageData) => {
+    // Broadcast the message to everyone else in the group room
+    // The 'sender' will be overwritten by the server with the user's actual name if you have that data
+    socket.to(messageData.groupId).emit('receiveMessage', messageData);
+  });
+
+  socket.on('disconnect', () => { /* ... */ });
+});
+
+// ... (Rest of your server.js: routes, server.listen)
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/group', require('./routes/group'));
+app.use('/api/swipes', require('./routes/swipes'));
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

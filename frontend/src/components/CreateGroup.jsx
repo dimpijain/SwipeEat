@@ -4,7 +4,7 @@ import {
   CircularProgress, Box, Slider, Typography, FormControl, InputLabel,
   Select, MenuItem, Chip, OutlinedInput
 } from '@mui/material';
-import axios from 'axios';
+import api from '../api'; // ✅ CHANGE: Import the dedicated 'api' instance
 import { toast } from 'react-toastify';
 
 const COLORS = {
@@ -14,27 +14,19 @@ const COLORS = {
 
 // A list of common cuisines for the dropdown
 const cuisineOptions = [
-  'Indian',
-  'Chinese',
-  'Italian',
-  'Mexican',
-  'Thai',
-  'Japanese',
-  'American',
-  'Mediterranean',
+  'Indian', 'Chinese', 'Italian', 'Mexican', 'Thai', 'Japanese', 'American', 'Mediterranean',
 ];
 
-const CreateGroup = ({ open, onClose, token, onGroupChange }) => {
+// ✅ CHANGE: The 'token' prop is no longer needed, as the 'api' instance handles it automatically
+const CreateGroup = ({ open, onClose, onGroupChange }) => {
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [radius, setRadius] = useState(5);
-  // ✅ ADDED: State for cuisine preferences
   const [cuisinePreferences, setCuisinePreferences] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const handleCuisineChange = (event) => {
     const { target: { value } } = event;
-    // On autofill we get a stringified value.
     setCuisinePreferences(typeof value === 'string' ? value.split(',') : value);
   };
 
@@ -45,17 +37,14 @@ const CreateGroup = ({ open, onClose, token, onGroupChange }) => {
     }
     setLoading(true);
     try {
-      const response = await axios.post(
+      // ✅ CHANGE: Use 'api.post' for the request
+      const response = await api.post(
         '/api/group/create',
         {
           name,
           location,
           radius,
-          // ✅ ADDED: Include cuisine preferences in the request
           cuisinePreferences,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
         }
       );
       if (response.data.success) {
@@ -102,7 +91,6 @@ const CreateGroup = ({ open, onClose, token, onGroupChange }) => {
           onChange={(e) => setLocation(e.target.value)}
         />
         
-        {/* ✅ ADDED: Multi-select dropdown for cuisines */}
         <FormControl fullWidth margin="dense">
           <InputLabel>Cuisine Preferences</InputLabel>
           <Select

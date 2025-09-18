@@ -1,15 +1,22 @@
 import axios from 'axios';
 
-// eslint-disable-next-line no-undef
+// Get the API key from your frontend's .env file
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+
+// Use the Vite proxy paths for API calls
 const GEOCODE_URL = '/gmaps/maps/api/geocode/json';
 const NEARBY_SEARCH_URL = '/gmaps/maps/api/place/nearbysearch/json';
 const PLACE_DETAILS_URL = '/gmaps/maps/api/place/details/json';
-const PHOTO_URL = '/gmaps/maps/api/place/photo';
-// Helper to construct a photo URL from a photo reference
-const getPhotoUrl = (photoReference, maxWidth = 400) => {
+
+/**
+ * Helper function to construct a full, direct URL for a Google Place photo.
+ * This is used for <img> tags and doesn't need the proxy.
+ * @param {string} photoReference - The photo reference string from the Places API.
+ * @returns {string|null} The full photo URL or null.
+ */
+const getPhotoUrl = (photoReference) => {
   if (!photoReference) return null;
-  return `${PHOTO_URL}?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${API_KEY}`;
+  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${API_KEY}`;
 };
 
 /**
@@ -26,9 +33,9 @@ export const getCoordinates = async (location) => {
       },
     });
     if (response.data.status === 'OK') {
-      return response.data.results[0].geometry.location; // { lat, lng }
+      return response.data.results[0].geometry.location; // Returns { lat, lng }
     } else {
-      throw new Error(response.data.status || 'Failed to geocode location');
+      throw new Error(response.data.error_message || `Geocoding failed: ${response.data.status}`);
     }
   } catch (error) {
     console.error('Geocoding API error:', error);
@@ -37,14 +44,17 @@ export const getCoordinates = async (location) => {
 };
 
 /**
- * Fetches nearby restaurants from the Google Places API.
- * @param {number} lat - Latitude.
- * @param {number} lng - Longitude.
- * @param {number} radius - Search radius in kilometers.
+ * Fetches nearby restaurants using coordinates.
+ * @param {string} location - The location string (e.g., "Patiala, Punjab").
+ * @param {number} radius - The search radius in kilometers.
  * @returns {Promise<Array>} A promise that resolves to an array of formatted restaurant objects.
  */
-export const getNearbyRestaurants = async (lat, lng, radius) => {
+export const getNearbyRestaurants = async (location, radius) => {
   try {
+    // Step 1: Convert location name to coordinates
+    const { lat, lng } = await getCoordinates(location);
+
+    // Step 2: Use coordinates to find nearby restaurants
     const response = await axios.get(NEARBY_SEARCH_URL, {
       params: {
         location: `${lat},${lng}`,
@@ -55,7 +65,7 @@ export const getNearbyRestaurants = async (lat, lng, radius) => {
     });
 
     if (response.data.status === 'OK') {
-      // Map API data to the structure your component expects
+      // Map the raw API data to the format our app expects
       return response.data.results.map(place => ({
         id: place.place_id,
         name: place.name,
@@ -67,7 +77,7 @@ export const getNearbyRestaurants = async (lat, lng, radius) => {
         types: place.types,
       }));
     } else {
-      throw new Error(response.data.status || 'Failed to fetch restaurants');
+      throw new Error(response.data.error_message || `Nearby Search failed: ${response.data.status}`);
     }
   } catch (error) {
     console.error('Nearby Search API error:', error);
@@ -92,7 +102,6 @@ export const getRestaurantDetails = async (placeId) => {
 
     if (response.data.status === 'OK') {
       const place = response.data.result;
-      // Map API data to the structure your component expects
       return {
         id: place.place_id,
         name: place.name,
@@ -105,7 +114,6 @@ export const getRestaurantDetails = async (placeId) => {
     }
   } catch (error) {
     console.error(`Place Details API error for ${placeId}:`, error);
-    // Return a fallback object so Promise.all doesn't fail completely
     return { id: placeId, name: 'Details not available', address: 'N/A', rating: 'N/A' };
   }
 };
