@@ -51,8 +51,8 @@ router.get('/:id', verifyToken, async (req, res) => {
 // Endpoint to create a new group
 router.post('/create', verifyToken, async (req, res) => {
     try {
-        // Correctly destructure nested preferences
-        const { name, location, radius, cuisinePreferences } = req.body;
+        // ✅ MODIFIED: Destructure 'eventDate' from the request body
+        const { name, location, radius, cuisinePreferences, eventDate } = req.body;
         const createdBy = req.user.id;
 
         let joinCode;
@@ -71,6 +71,7 @@ router.post('/create', verifyToken, async (req, res) => {
             location,
             radius,
             cuisinePreferences,
+            eventDate, // ✅ ADDED: Pass the eventDate to the new Group model
             joinCode
         });
 
@@ -187,5 +188,7 @@ router.get('/:groupId/matches', verifyToken, async (req, res) => {
         return res.status(500).json({ success: false, message: 'Failed to fetch group matches.' });
     }
 });
+
+
 
 module.exports = router;

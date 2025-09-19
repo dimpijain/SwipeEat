@@ -4,7 +4,9 @@ import {
   CircularProgress, Box, Slider, Typography, FormControl, InputLabel,
   Select, MenuItem, Chip, OutlinedInput
 } from '@mui/material';
-import api from '../api'; // ✅ CHANGE: Import the dedicated 'api' instance
+// ✅ ADDED: Import the DatePicker component
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import api from '../api';
 import { toast } from 'react-toastify';
 
 const COLORS = {
@@ -12,32 +14,39 @@ const COLORS = {
   textPrimary: '#575761',
 };
 
-// A list of common cuisines for the dropdown
 const cuisineOptions = [
   'Indian', 'Chinese', 'Italian', 'Mexican', 'Thai', 'Japanese', 'American', 'Mediterranean',
 ];
 
-// ✅ CHANGE: The 'token' prop is no longer needed, as the 'api' instance handles it automatically
 const CreateGroup = ({ open, onClose, onGroupChange }) => {
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [radius, setRadius] = useState(5);
   const [cuisinePreferences, setCuisinePreferences] = useState([]);
+  // ✅ ADDED: State for the event date
+  const [eventDate, setEventDate] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleCuisineChange = (event) => {
     const { target: { value } } = event;
     setCuisinePreferences(typeof value === 'string' ? value.split(',') : value);
   };
+  
+  const clearForm = () => {
+    setName('');
+    setLocation('');
+    setRadius(5);
+    setCuisinePreferences([]);
+    setEventDate(null);
+  };
 
   const handleSubmit = async () => {
     if (!name.trim() || !location.trim()) {
-      toast.error('Group name and location are required.');
+      toast.error('Event name and location are required.');
       return;
     }
     setLoading(true);
     try {
-      // ✅ CHANGE: Use 'api.post' for the request
       const response = await api.post(
         '/api/group/create',
         {
@@ -45,20 +54,17 @@ const CreateGroup = ({ open, onClose, onGroupChange }) => {
           location,
           radius,
           cuisinePreferences,
+          eventDate: eventDate ? eventDate.toISOString() : null, // ✅ ADDED: Include eventDate in payload
         }
       );
       if (response.data.success) {
-        toast.success('Group created successfully!');
+        toast.success('Event created successfully!');
         onGroupChange();
         onClose();
-        // Reset all form fields
-        setName('');
-        setLocation('');
-        setRadius(5);
-        setCuisinePreferences([]);
+        clearForm();
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create group.');
+      toast.error(error.response?.data?.message || 'Failed to create event.');
     } finally {
       setLoading(false);
     }
@@ -67,19 +73,25 @@ const CreateGroup = ({ open, onClose, onGroupChange }) => {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700, color: COLORS.primary }}>
-        Create a New Group
+        Schedule a New Event
       </DialogTitle>
       <DialogContent>
+        {/* ✅ ADDED: Date Picker for scheduling the event */}
+        <DatePicker
+          label="Event Date (Optional)"
+          value={eventDate}
+          onChange={(newValue) => setEventDate(newValue)}
+          sx={{ mt: 2, width: '100%' }}
+        />
         <TextField
           autoFocus
           margin="dense"
-          label="Group Name"
+          label="Event Name"
           type="text"
           fullWidth
           variant="outlined"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          sx={{ mt: 2 }}
         />
         <TextField
           margin="dense"
@@ -139,7 +151,7 @@ const CreateGroup = ({ open, onClose, onGroupChange }) => {
           disabled={loading}
           sx={{ bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary } }}
         >
-          {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Group'}
+          {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Event'}
         </Button>
       </DialogActions>
     </Dialog>

@@ -7,23 +7,23 @@ import {
   Paper, 
   Link,
   CircularProgress,
-  useTheme,
-  InputAdornment
+  InputAdornment,
+  Alert, // ✅ ADDED: Import Alert
+  IconButton // ✅ ADDED: Import IconButton
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Person, Email, Lock, Restaurant } from '@mui/icons-material';
+// ✅ ADDED: Import ArrowBack and other icons
+import { Person, Email, Lock, Restaurant, ArrowBack } from '@mui/icons-material';
 
-// Color palette
 const COLORS = {
-  primary: '#FF7F7F',      // Coral
-  secondary: '#FFD6B0',    // Peach
-  background: '#FFF9FA',   // Cream
-  textPrimary: '#575761',  // Dark gray
-  cardBackground: '#FFF5F8', // Light pink
-  success: '#4CAF50'       // Green
+  primary: '#FF7F7F',
+  secondary: '#FFD6B0',
+  background: '#FFF9FA',
+  textPrimary: '#575761',
+  cardBackground: '#FFF5F8',
+  success: '#4CAF50'
 };
 
-// Custom hook for registration logic
 const useRegister = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -62,7 +62,6 @@ const useRegister = () => {
   return { handleRegister, loading, error };
 };
 
-// InputField component
 const InputField = ({ icon, label, type, value, onChange, ...props }) => (
   <TextField
     fullWidth
@@ -74,7 +73,7 @@ const InputField = ({ icon, label, type, value, onChange, ...props }) => (
     InputProps={{
       startAdornment: (
         <InputAdornment position="start">
-          <Box sx={{ color: COLORS.textPrimary }}>
+          <Box sx={{ color: COLORS.textPrimary, display: 'flex' }}>
             {icon}
           </Box>
         </InputAdornment>
@@ -94,13 +93,8 @@ const InputField = ({ icon, label, type, value, onChange, ...props }) => (
   />
 );
 
-// RegistrationForm component
 const RegistrationForm = ({ onRegister, loading, error }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -115,47 +109,27 @@ const RegistrationForm = ({ onRegister, loading, error }) => {
     <Paper
       elevation={3}
       sx={{
-        p: 4,
+        
+        p: 7,
         borderRadius: 4,
-        maxWidth: 450,
+        maxWidth: 750,
         width: '100%',
         bgcolor: 'white',
-        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.05)',
       }}
     >
       <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Restaurant 
-          sx={{ 
-            fontSize: 50, 
-            color: COLORS.primary,
-            mb: 1
-          }} 
-        />
-        <Typography 
-          variant="h4" 
-          fontWeight={700} 
-          color={COLORS.primary}
-        >
+        <Restaurant sx={{ fontSize: 50, color: COLORS.primary, mb: 1 }} />
+        <Typography variant="h4" fontWeight={700} color={COLORS.primary}>
           Join SwipeEat
         </Typography>
         <Typography color={COLORS.textPrimary}>
-          Create your account to start sharing meals
+          Create an account to start deciding
         </Typography>
       </Box>
       
       {error && (
-        <Typography 
-          color="error" 
-          mb={2} 
-          textAlign="center"
-          sx={{ 
-            backgroundColor: '#FFEBEE',
-            p: 1,
-            borderRadius: 1
-          }}
-        >
-          {error}
-        </Typography>
+        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -167,7 +141,6 @@ const RegistrationForm = ({ onRegister, loading, error }) => {
           onChange={handleChange}
           required
         />
-        
         <InputField
           icon={<Email />}
           label="Email Address"
@@ -177,7 +150,6 @@ const RegistrationForm = ({ onRegister, loading, error }) => {
           onChange={handleChange}
           required
         />
-        
         <InputField
           icon={<Lock />}
           label="Password"
@@ -203,36 +175,16 @@ const RegistrationForm = ({ onRegister, loading, error }) => {
             fontWeight: 600,
             '&:hover': {
               bgcolor: '#FF6F6F',
-              boxShadow: '0 4px 12px rgba(255, 127, 127, 0.3)',
             },
           }}
         >
-          {loading ? (
-            <CircularProgress size={24} color="inherit" />
-          ) : (
-            'Create Account'
-          )}
+          {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
         </Button>
       </form>
       
-      <Typography 
-        mt={3} 
-        textAlign="center" 
-        color={COLORS.textPrimary}
-        sx={{ fontSize: '0.9rem' }}
-      >
+      <Typography mt={3} textAlign="center" color={COLORS.textPrimary}>
         Already have an account?{' '}
-        <Link 
-          href="/login" 
-          color={COLORS.primary}
-          sx={{ 
-            fontWeight: 600,
-            textDecoration: 'none',
-            '&:hover': {
-              textDecoration: 'underline'
-            }
-          }}
-        >
+        <Link href="/login" color={COLORS.primary} sx={{ fontWeight: 600 }}>
           Sign in
         </Link>
       </Typography>
@@ -240,9 +192,9 @@ const RegistrationForm = ({ onRegister, loading, error }) => {
   );
 };
 
-// Main Register component
 const Register = () => {
   const { handleRegister, loading, error } = useRegister();
+  const navigate = useNavigate();
 
   return (
     <Box
@@ -253,8 +205,23 @@ const Register = () => {
         justifyContent: 'center',
         background: `linear-gradient(135deg, ${COLORS.background} 0%, ${COLORS.cardBackground} 100%)`,
         p: 2,
+        position: 'relative', 
       }}
     >
+      
+      <IconButton 
+        onClick={() => navigate('/')}
+        sx={{
+          position: 'absolute',
+          top: 24,
+          left: 24,
+          bgcolor: 'white',
+          '&:hover': { bgcolor: '#f5f5f5' }
+        }}
+      >
+        <ArrowBack />
+      </IconButton>
+
       <RegistrationForm 
         onRegister={handleRegister} 
         loading={loading} 

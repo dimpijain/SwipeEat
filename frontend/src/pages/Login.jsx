@@ -7,13 +7,13 @@ import {
   Paper, 
   Link,
   CircularProgress,
-  useTheme
+  IconButton // ✅ ADDED: Import IconButton
 } from '@mui/material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Email } from '@mui/icons-material';
+// ✅ ADDED: Import ArrowBack and other icons
+import { Lock, Email, ArrowBack } from '@mui/icons-material';
 
-// Custom hook for login logic
 const useLogin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -33,7 +33,7 @@ const useLogin = () => {
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,6 @@ const useLogin = () => {
   return { handleLogin, loading, error };
 };
 
-// Color palette
 const COLORS = {
   primary: '#FF7F7F',
   secondary: '#FFD6B0',
@@ -52,7 +51,6 @@ const COLORS = {
   error: '#d32f2f'
 };
 
-// InputField component
 const InputField = ({ icon, label, type, value, onChange, ...props }) => (
   <TextField
     fullWidth
@@ -63,7 +61,7 @@ const InputField = ({ icon, label, type, value, onChange, ...props }) => (
     onChange={onChange}
     InputProps={{
       startAdornment: (
-        <Box sx={{ color: COLORS.textPrimary, mr: 1 }}>
+        <Box sx={{ color: COLORS.textPrimary, mr: 1, display: 'flex' }}>
           {icon}
         </Box>
       ),
@@ -79,7 +77,6 @@ const InputField = ({ icon, label, type, value, onChange, ...props }) => (
   />
 );
 
-// LoginForm component
 const LoginForm = ({ onLogin, loading, error }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -93,11 +90,13 @@ const LoginForm = ({ onLogin, loading, error }) => {
     <Paper
       elevation={3}
       sx={{
-        p: 4,
+        // ✅ CHANGED: Increased padding and max-width for a larger box
+        p: 7,
         borderRadius: 4,
-        maxWidth: 450,
+        maxWidth: 600,
         width: '100%',
         bgcolor: 'white',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.05)'
       }}
     >
       <Typography 
@@ -107,13 +106,11 @@ const LoginForm = ({ onLogin, loading, error }) => {
         mb={3}
         textAlign="center"
       >
-        Welcome to SwipeEat
+        Welcome Back!
       </Typography>
       
       {error && (
-        <Typography color={COLORS.error} mb={2} textAlign="center">
-          {error}
-        </Typography>
+        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
       )}
 
       <form onSubmit={handleSubmit}>
@@ -155,7 +152,7 @@ const LoginForm = ({ onLogin, loading, error }) => {
       
       <Typography mt={3} textAlign="center" color={COLORS.textPrimary}>
         Don't have an account?{' '}
-        <Link href="/register" color={COLORS.primary}>
+        <Link href="/register" color={COLORS.primary} sx={{ fontWeight: 600 }}>
           Sign up
         </Link>
       </Typography>
@@ -163,10 +160,9 @@ const LoginForm = ({ onLogin, loading, error }) => {
   );
 };
 
-// Main Login component
 const Login = () => {
-  const theme = useTheme();
   const { handleLogin, loading, error } = useLogin();
+  const navigate = useNavigate();
 
   return (
     <Box
@@ -177,8 +173,23 @@ const Login = () => {
         justifyContent: 'center',
         bgcolor: COLORS.background,
         p: 2,
+        position: 'relative' // Needed for absolute positioning of the button
       }}
     >
+      {/* ✅ ADDED: Back to homepage button */}
+      <IconButton 
+        onClick={() => navigate('/')}
+        sx={{
+          position: 'absolute',
+          top: 24,
+          left: 24,
+          bgcolor: 'white',
+          '&:hover': { bgcolor: '#f5f5f5' }
+        }}
+      >
+        <ArrowBack />
+      </IconButton>
+      
       <LoginForm 
         onLogin={handleLogin} 
         loading={loading} 

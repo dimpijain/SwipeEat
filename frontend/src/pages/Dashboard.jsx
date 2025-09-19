@@ -1,46 +1,28 @@
-// src/components/Dashboard.jsx
-
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-  Box, Typography, Grid, Paper, Button, Card, CardContent, CardActions, TextField, CircularProgress, IconButton, Divider, Tabs,
-  Tab, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Slide, List, ListItem, ListItemText, Chip,
-} from '@mui/material';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { Box, Typography, Grid, Paper, Button, Card, CardContent, TextField, CircularProgress, IconButton, Divider, Tabs, Tab, Alert, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Chip, Avatar, AvatarGroup, Stack } from '@mui/material';
 import { toast, ToastContainer } from 'react-toastify';
-//import 'react-toastify/dist/React-toastify.css';
+import 'react-toastify/dist/ReactToastify.css';
 import CreateGroup from '../components/CreateGroup';
-// ✅ CHANGE: Import the new api instance
+import FriendsListModal from '../components/FriendsListModal';
 import api from '../api'; 
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
-import DeleteIcon from '@mui/icons-material/Delete';
-import RestaurantIcon from '@mui/icons-material/Restaurant';
-import FastfoodIcon from '@mui/icons-material/Fastfood';
-import CloseIcon from '@mui/icons-material/Close';
-import GroupIcon from '@mui/icons-material/Group';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import StarIcon from '@mui/icons-material/Star';
-import EventIcon from '@mui/icons-material/Event';
-
+import { Delete as DeleteIcon, Restaurant as RestaurantIcon, Fastfood as FastfoodIcon, Close as CloseIcon, Group as GroupIcon, LocationOn as LocationOnIcon, Star as StarIcon, Event as EventIcon, Add as AddIcon, People as PeopleIcon } from '@mui/icons-material';
 import { StaticDatePicker } from '@mui/x-date-pickers/StaticDatePicker';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import moment from 'moment';
-
 import { getRestaurantDetails } from '../services/googleApiService';
-
 
 const COLORS = {
   primary: '#FF7F7F',
   secondary: '#FFD6B0',
   background: '#FFF9FA',
   textPrimary: '#575761',
-  cardBackground: '#FFF5F8',
+  cardBackground: '#FFFFFF',
   sidebarBackground: '#FFEDE7',
   accent: '#B5EAD7'
 };
-
-// ✅ REMOVED: This global setting is now handled by src/api.js
-// axios.defaults.baseURL = 'http://localhost:5000';
 
 const useGroups = (token) => {
   const [createdGroups, setCreatedGroups] = useState([]);
@@ -49,12 +31,11 @@ const useGroups = (token) => {
   const [error, setError] = useState(null);
 
   const fetchGroups = useCallback(async () => {
+    if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      // ✅ CHANGE: Use 'api' instead of 'axios'
       const res = await api.get('/api/group/my');
-
       if (res.data.success) {
         setCreatedGroups(res.data.createdGroups || []);
         setJoinedGroups(res.data.joinedGroups || []);
@@ -63,131 +44,110 @@ const useGroups = (token) => {
       }
     } catch (err) {
       setError(err.message);
-      console.error('Fetch groups error:', err);
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-      if (token) {
-          fetchGroups();
-      }
-  }, [token, fetchGroups]);
+    fetchGroups();
+  }, [fetchGroups]);
 
   return { createdGroups, joinedGroups, loading, error, refetch: fetchGroups };
 };
 
-// --- No changes needed in Sidebar, GroupCard ---
-const Sidebar = ({ username, onLogout, open, onClose }) => (
-    <Slide direction="right" in={open} mountOnEnter unmountOnExit>
-      <Box sx={{ width: 300, bgcolor: COLORS.sidebarBackground, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', px: 4, py: 6, borderRight: `2px solid ${COLORS.cardBackground}`, position: 'fixed', height: '100vh', zIndex: 1000, boxShadow: 6, left: 0 }}>
-        <Box>
-          <IconButton onClick={onClose} sx={{ position: 'absolute', top: 16, right: 16, color: COLORS.textPrimary }}> <CloseIcon /> </IconButton>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 4, mt: 4 }}>
-            <FastfoodIcon sx={{ color: COLORS.primary, fontSize: 36, mr: 1 }} />
-            <Typography variant="h4" fontWeight={800} color={COLORS.primary} sx={{ fontFamily: "'Pacifico', cursive" }}> SwipeEat </Typography>
-            <RestaurantIcon sx={{ color: COLORS.primary, fontSize: 36, ml: 1 }} />
+const Sidebar = ({ username, onLogout, onOpenFriends }) => (
+  <Box sx={{ width: 280, bgcolor: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: 2, borderRight: `1px solid #f0f0f0`, height: '100vh', position: 'fixed', zIndex: 1000 }}>
+      <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, p: 2 }}>
+              <FastfoodIcon sx={{ color: COLORS.primary, fontSize: 32, mr: 1.5 }} />
+              <Typography variant="h5" fontWeight={800} color={COLORS.primary}>SwipeEat</Typography>
           </Box>
-          <Typography variant="h6" fontWeight={600} color={COLORS.textPrimary}> Welcome, </Typography>
-          <Typography variant="h5" fontWeight={700} color={COLORS.primary}> {username || 'User'} </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Button variant="contained" color="error" fullWidth onClick={onLogout} sx={{ fontWeight: 700, py: 1.5, borderRadius: 3, }}> Logout </Button>
-        </Box>
+          <Divider sx={{ mb: 2 }}/>
+          <Button 
+            variant="contained" 
+            fullWidth 
+            onClick={onOpenFriends}
+            startIcon={<PeopleIcon />}
+            sx={{ 
+              mb: 2, 
+              bgcolor: COLORS.accent, 
+              color: COLORS.textPrimary, 
+              '&:hover': { bgcolor: '#a2d9c1' },
+              boxShadow: 'none'
+            }}
+          >
+            Friends List
+          </Button>
+          <Box sx={{ p: 2, bgcolor: COLORS.background, borderRadius: 2 }}>
+            <Typography variant="subtitle1" color={COLORS.textPrimary}>Welcome,</Typography>
+            <Typography variant="h6" fontWeight={700} color={COLORS.primary}>{username || 'User'}</Typography>
+          </Box>
       </Box>
-    </Slide>
+      <Stack spacing={1}>
+          <Button 
+            variant="contained" 
+            color="error" 
+            fullWidth 
+            onClick={onLogout} 
+            sx={{ fontWeight: 600, bgcolor: COLORS.primary, '&:hover': { bgcolor: '#E56D62' } }}
+          >
+            Logout 
+          </Button>
+      </Stack>
+  </Box>
 );
+
 const GroupCard = ({ group, isOwner, onDelete, onLeave, onClick }) => (
-    <Paper elevation={3} onClick={onClick} sx={{ bgcolor: COLORS.cardBackground, p: 3, borderRadius: 3, height: '100%', position: 'relative', transition: 'transform 0.2s', cursor: 'pointer', '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 4px 8px rgba(0,0,0,0.1)` } }} >
-      <Typography variant="h6" fontWeight={700} color={COLORS.primary}> {group.name} </Typography>
-      {isOwner && ( <Typography variant="body2" color={COLORS.textPrimary} mt={1}> Invite Code: <strong>{group.joinCode}</strong> </Typography> )}
-      <Typography variant="body2" color={COLORS.textPrimary} mt={1}> {group.members?.length || 0} members </Typography>
-      <Typography variant="caption" color={COLORS.textPrimary} mt={2} display="block"> {isOwner ? `Created: ${new Date(group.createdAt).toLocaleDateString()}` : `Joined: ${new Date(group.joinDate).toLocaleDateString()}`} </Typography>
-      <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
-        {isOwner ? ( <IconButton onClick={(e) => { e.stopPropagation(); onDelete(group._id); }} color="error" size="small"> <DeleteIcon fontSize="small" /> </IconButton> ) : ( <Button variant="outlined" color="error" size="small" onClick={(e) => { e.stopPropagation(); onLeave(group._id); }} sx={{ py: 0.5, fontSize: '0.75rem' }} > Leave Group </Button> )}
+  <Paper 
+    onClick={onClick} 
+    sx={{ 
+      p: 2.5, 
+      borderRadius: 4, 
+      minHeight: '170px', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      justifyContent: 'space-between', 
+      transition: 'transform 0.2s, box-shadow 0.2s', 
+      cursor: 'pointer', 
+      '&:hover': { transform: 'translateY(-5px)', boxShadow: 8 }, 
+      border: '1px solid #f0f0f0' 
+    }} 
+  >
+    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+      <Box>
+        <Typography variant="h5" fontWeight={700} color={COLORS.primary}>{group.name}</Typography>
+        <Chip 
+          label={isOwner ? `Invite: ${group.joinCode}` : `${group.members?.length || 0} members`} 
+          size="small" 
+          sx={{ mt: 1, bgcolor: isOwner ? COLORS.accent : COLORS.secondary }} 
+        />
       </Box>
-    </Paper>
-);
-// --- End of no-change section ---
-
-
-const JoinGroupForm = ({ token, onGroupChange }) => {
-  const [inviteCode, setInviteCode] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleJoinGroup = async () => {
-    if (!inviteCode.trim()) {
-      toast.error('Please enter an invite code');
-      return;
-    }
-    setLoading(true);
-    try {
-      // ✅ CHANGE: Use 'api' instead of 'axios'
-      const response = await api.post(
-        '/api/group/join',
-        { code: inviteCode.toUpperCase() }
-      );
-
-      if (response.data.success) {
-        toast.success(`Joined group: ${response.data.group.name}`);
-        onGroupChange();
-        setInviteCode('');
+      {isOwner ? 
+        <IconButton onClick={(e) => { e.stopPropagation(); onDelete(group._id); }} color="error" size="small"><DeleteIcon /></IconButton> : 
+        <Button size="small" onClick={(e) => { e.stopPropagation(); onLeave(group._id); }} sx={{ color: COLORS.textPrimary, fontSize: '0.75rem' }}>Leave</Button>
       }
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Failed to join group';
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+    </Stack>
+    <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <AvatarGroup max={6}>
+        {group.members?.map(member => (
+          <Avatar key={member.user._id} sx={{ width: 38, height: 38, fontSize: '1rem' }}>{member.user.name.charAt(0)}</Avatar>
+        ))}
+      </AvatarGroup>
+      {group.eventDate && 
+        <Chip 
+          icon={<EventIcon fontSize='small'/>} 
+          label={moment(group.eventDate).format('MMM D, YYYY')} 
+          size="small" 
+        />
+      }
+    </Stack>
+  </Paper>
+);
 
-  return (
-    <Box sx={{ width: '100%' }}>
-      <TextField fullWidth label="Group Invite Code" value={inviteCode} onChange={(e) => setInviteCode(e.target.value.toUpperCase())} margin="normal" inputProps={{ maxLength: 6 }} placeholder="Enter 6-digit code" />
-      <Button fullWidth variant="contained" onClick={handleJoinGroup} disabled={loading || !inviteCode.trim()} sx={{ mt: 2, bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary }, py: 1.5, borderRadius: 2 }}>
-        {loading ? <CircularProgress size={24} color="inherit" /> : 'Join Group'}
-      </Button>
-    </Box>
-  );
-};
-
-const GroupDetailsModal = ({ open, onClose, group, token, onSwipeRedirect }) => {
-    const [matchedRestaurants, setMatchedRestaurants] = useState([]);
-    const [loadingMatches, setLoadingMatches] = useState(false);
-    const [matchesError, setMatchesError] = useState(null);
-
-    useEffect(() => {
-        if (open && group?._id && token) {
-            const fetchMatches = async () => {
-                setLoadingMatches(true);
-                setMatchesError(null);
-                try {
-                    // ✅ CHANGE: Use 'api' instead of 'axios'
-                    const response = await api.get(`/api/group/${group._id}/matches`);
-                    
-                    const matchedIds = response.data.matchedRestaurantIds || [];
-                    if (matchedIds.length > 0) {
-                        const restaurantDetailsPromises = matchedIds.map(id => getRestaurantDetails(id));
-                        const restaurantsWithDetails = await Promise.all(restaurantDetailsPromises);
-                        setMatchedRestaurants(restaurantsWithDetails);
-                    } else {
-                        setMatchedRestaurants([]);
-                    }
-                } catch (err) {
-                    console.error('Error fetching matched restaurants for modal:', err);
-                    setMatchesError('Failed to load matched restaurants.');
-                } finally {
-                    setLoadingMatches(false);
-                }
-            };
-            fetchMatches();
-        }
-    }, [open, group, token]);
-
+const GroupDetailsModal = ({ open, onClose, group, onSwipeRedirect }) => {
     if (!group) return null;
-
-    return (
+     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { bgcolor: COLORS.cardBackground, borderRadius: 3, p: 2 } }} >
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, fontSize: '1.5rem', fontWeight: 700, color: COLORS.primary, }}>
                 {group.name} Details
@@ -198,34 +158,30 @@ const GroupDetailsModal = ({ open, onClose, group, token, onSwipeRedirect }) => 
                 <List dense disablePadding>
                     {group.members && group.members.length > 0 ? ( group.members.map((member, index) => ( <ListItem key={index} sx={{ py: 0.5 }}> <ListItemText primary={member.user ? member.user.name : 'Unknown User'} secondary={`Joined: ${new Date(member.joinedAt || Date.now()).toLocaleDateString()}`} /> </ListItem> )) ) : ( <Typography variant="body2" color="text.secondary" ml={2}>No members found.</Typography> )}
                 </List>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" color={COLORS.textPrimary} mt={2} mb={1}> <LocationOnIcon sx={{ verticalAlign: 'bottom', mr: 1 }} /> Group Preferences: </Typography>
-                <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}> <strong>Invite Code:</strong> {group.joinCode} </Typography>
+                 <Divider sx={{ my: 2 }} />
+                 <Typography variant="h6" color={COLORS.textPrimary} mt={2} mb={1}> <LocationOnIcon sx={{ verticalAlign: 'bottom', mr: 1 }} /> Group Preferences: </Typography>
+                 <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}> <strong>Invite Code:</strong> {group.joinCode} </Typography>
                 {group.cuisinePreferences && group.cuisinePreferences.length > 0 && ( <Box mt={1} mb={1}> <Typography variant="body2" color={COLORS.textPrimary}><strong>Cuisines:</strong></Typography> <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}> {group.cuisinePreferences.map((cuisine, idx) => ( <Chip key={idx} label={cuisine} size="small" sx={{ bgcolor: COLORS.accent }} /> ))} </Box> </Box> )}
-                {group.location && ( <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}> <strong>Location:</strong> {group.location} </Typography> )}
+                 {group.location && ( <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}> <strong>Location:</strong> {group.location} </Typography> )}
                 {group.radius && ( <Typography variant="body1" color={COLORS.textPrimary} sx={{ mb: 1 }}> <strong>Search Radius:</strong> {group.radius} km </Typography> )}
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" color={COLORS.textPrimary} mt={2} mb={1}> <RestaurantIcon sx={{ verticalAlign: 'bottom', mr: 1 }} /> Matched Restaurants: </Typography>
-                {loadingMatches ? ( <Box display="flex" justifyContent="center" py={2}><CircularProgress size={20} sx={{ color: COLORS.primary }} /></Box> ) : matchesError ? ( <Alert severity="error">{matchesError}</Alert> ) : matchedRestaurants.length > 0 ? ( <List dense disablePadding> {matchedRestaurants.map((restaurant, index) => ( <ListItem key={restaurant.id || index} sx={{ py: 0.5 }}> <ListItemText primary={restaurant.name} secondary={ <Box> <Typography variant="body2" color="text.secondary" component="span">{restaurant.address}</Typography> {restaurant.rating && ( <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}> <StarIcon fontSize="inherit" sx={{ mr: 0.5 }} /> {restaurant.rating} </Typography> )} </Box> } /> </ListItem> ))} </List> ) : ( <Typography variant="body2" color="text.secondary">No restaurants matched yet.</Typography> )}
-            </DialogContent>
-            <DialogActions sx={{ p: 3, pt: 2 }}>
-                <Button variant="contained" fullWidth onClick={() => onSwipeRedirect(group._id)} sx={{ bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary }, py: 1.5, borderRadius: 2 }} > Go to Swipe </Button>
-            </DialogActions>
+                 <Divider sx={{ my: 2 }} />
+             </DialogContent>
+             <DialogActions sx={{ p: 3, pt: 2 }}>
+                 <Button variant="contained" fullWidth onClick={() => onSwipeRedirect(group._id)} sx={{ bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary }, py: 1.5, borderRadius: 2 }} > Go to Swipe </Button>
+             </DialogActions>
         </Dialog>
-    );
+     );
 };
-
 
 const Dashboard = () => {
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
-  const [username, setUsername] = useState('');
+  const [friendsModalOpen, setFriendsModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState({ id: null, name: '' });
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('myGroups');
   const navigate = useNavigate();
   const [groupDetailsModalOpen, setGroupDetailsModalOpen] = useState(false);
   const [selectedGroupForDetails, setSelectedGroupForDetails] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const EVENT_PANEL_WIDTH = 320;
 
   const { createdGroups, joinedGroups, loading, error, refetch } = useGroups(token);
 
@@ -237,46 +193,55 @@ const Dashboard = () => {
     }
     try {
       const decoded = jwtDecode(storedToken);
-      setUsername(decoded.name || 'User');
+      setCurrentUser({ id: decoded.id, name: decoded.name || 'User' });
       setToken(storedToken);
     } catch (error) {
-      console.error('Invalid token:', error);
       handleLogout();
     }
   }, [navigate]);
 
+  const friendsList = useMemo(() => {
+    const allMembers = new Map();
+    [...createdGroups, ...joinedGroups].forEach(group => {
+      group.members?.forEach(member => {
+        if (member.user?._id !== currentUser.id) {
+          allMembers.set(member.user._id, { id: member.user._id, name: member.user.name });
+        }
+      });
+    });
+    return Array.from(allMembers.values());
+  }, [createdGroups, joinedGroups, currentUser.id]);
+  
   const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
     navigate('/login');
   }, [navigate]);
 
-  const handleGroupChange = useCallback(() => {
-    refetch();
-  }, [refetch]);
+  const handleGroupChange = useCallback(() => refetch(), [refetch]);
 
   const handleDeleteGroup = useCallback(async (groupId) => {
-    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone.')) return;
-    try {
-      // ✅ CHANGE: Use 'api' instead of 'axios'
-      await api.delete(`/api/group/${groupId}`);
-      toast.success('Group deleted successfully');
-      handleGroupChange();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete group');
+    if (window.confirm('Are you sure you want to delete this group?')) {
+      try {
+        await api.delete(`/api/group/${groupId}`);
+        toast.success('Group deleted');
+        handleGroupChange();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to delete group');
+      }
     }
-  }, [token, handleGroupChange]);
+  }, [handleGroupChange]);
 
   const handleLeaveGroup = useCallback(async (groupId) => {
-    if (!window.confirm('Are you sure you want to leave this group? You will lose access to its content.')) return;
-    try {
-      // ✅ CHANGE: Use 'api' instead of 'axios'
-      await api.post(`/api/group/${groupId}/leave`);
-      toast.success('Left group successfully');
-      handleGroupChange();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to leave group');
+    if (window.confirm('Are you sure you want to leave this group?')) {
+      try {
+        await api.post(`/api/group/${groupId}/leave`);
+        toast.success('Left group');
+        handleGroupChange();
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to leave group');
+      }
     }
-  }, [token, handleGroupChange]);
+  }, [handleGroupChange]);
 
   const handleGroupCardClick = useCallback((group) => {
     setSelectedGroupForDetails(group);
@@ -288,74 +253,103 @@ const Dashboard = () => {
     navigate(`/swipe/${groupId}`);
   }, [navigate]);
 
-  if (error) {
+  const renderGroupGrid = (groups, isOwner) => {
+    if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}><CircularProgress sx={{ color: COLORS.primary }} /></Box>;
+    if (groups.length === 0) {
+      return (
+        <Paper sx={{ p: 4, bgcolor: '#fafafa', borderRadius: 2, textAlign: 'center', mt: 2 }}>
+          <Typography color="text.secondary">
+            {isOwner ? "You haven't created any events yet." : "You haven't joined any events yet."}
+          </Typography>
+        </Paper>
+      );
+    }
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Alert severity="error" sx={{ mb: 2 }}> Error loading groups: {error} </Alert>
-        <Button variant="contained" onClick={handleGroupChange} sx={{ bgcolor: COLORS.primary }} > Retry </Button>
-      </Box>
+      <Grid container spacing={3} mt={1}>
+        {groups.map(group => (
+          <Grid item xs={12} md={6} key={group._id}>
+            <GroupCard group={group} isOwner={isOwner} onDelete={handleDeleteGroup} onLeave={handleLeaveGroup} onClick={() => handleGroupCardClick(group)} />
+          </Grid>
+        ))}
+      </Grid>
     );
+  };
+
+  if (error) {
+    return <Alert severity="error">Error loading groups: {error}</Alert>;
   }
 
   return (
     <LocalizationProvider dateAdapter={AdapterMoment}>
-        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
-            <ToastContainer position="top-center" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="light" />
-            <Sidebar username={username} onLogout={handleLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', px: 4, py: 3, overflowY: 'auto', maxHeight: '100vh', position: 'relative', pl: sidebarOpen ? '320px' : '32px', pr: `${EVENT_PANEL_WIDTH + 32}px`, transition: 'padding-left 0.3s ease-in-out', '@media (max-width:960px)': { pr: '32px', } }} >
-                {!sidebarOpen && ( <IconButton onClick={() => setSidebarOpen(true)} sx={{ position: 'fixed', top: 16, left: 16, bgcolor: COLORS.primary, color: 'white', '&:hover': { bgcolor: COLORS.primary }, zIndex: 999, }} > <FastfoodIcon /> </IconButton> )}
-                <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3, '& .MuiTabs-indicator': { backgroundColor: COLORS.primary, } }} >
-                    <Tab label="My Groups" value="myGroups" />
-                    <Tab label="Joined Groups" value="joinedGroups" />
-                </Tabs>
-                {activeTab === 'myGroups' && (
-                    <Box sx={{ flex: 1 }}>
-                        <Typography variant="h5" color={COLORS.textPrimary} mb={3}> Your Created Groups </Typography>
-                        {loading ? ( <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}> <CircularProgress size={60} sx={{ color: COLORS.primary }} /> </Box> ) : createdGroups.length === 0 ? ( <Box sx={{ p: 3, bgcolor: COLORS.cardBackground, borderRadius: 2, textAlign: 'center' }}> <Typography color={COLORS.textPrimary} mb={2}> You haven't created any groups yet </Typography> <Button variant="contained" onClick={() => setCreateGroupOpen(true)} sx={{ bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary } }} > Create Your First Group </Button> </Box> ) : ( <Grid container spacing={3} mb={4}> {createdGroups.map(group => ( <Grid item xs={12} sm={6} key={group._id}> <GroupCard group={group} isOwner={true} onDelete={handleDeleteGroup} onClick={() => handleGroupCardClick(group)} /> </Grid> ))} </Grid> )}
-                        <Typography variant="h6" color={COLORS.textPrimary} my={3}> Group Actions </Typography>
-                        <Grid container spacing={3} mb={4}>
-                            <Grid item xs={12} sm={6}>
-                                <Card sx={{ bgcolor: COLORS.cardBackground, borderRadius: 4, boxShadow: 3 }}>
-                                    <CardContent>
-                                        <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom> Create New Group </Typography>
-                                        <Typography variant="body2" color={COLORS.textPrimary}> Start a new food adventure with your friends. </Typography>
-                                    </CardContent>
-                                    <CardActions sx={{ p: 2 }}>
-                                        <Button fullWidth variant="contained" onClick={() => setCreateGroupOpen(true)} sx={{ bgcolor: COLORS.primary, '&:hover': { bgcolor: COLORS.primary } }} > Create Group </Button>
-                                    </CardActions>
-                                </Card>
-                            </Grid>
-                        </Grid>
-                    </Box>
-                )}
-                {activeTab === 'joinedGroups' && (
-                    <Box sx={{ flex: 1 }}>
-                        <Typography variant="h5" color={COLORS.textPrimary} mb={3}> Groups You've Joined </Typography>
-                        {loading ? ( <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}> <CircularProgress size={60} sx={{ color: COLORS.primary }} /> </Box> ) : joinedGroups.length === 0 ? ( <Box sx={{ p: 3, bgcolor: COLORS.cardBackground, borderRadius: 2, textAlign: 'center' }}> <Typography color={COLORS.textPrimary} mb={2}> You haven't joined any groups yet. </Typography> </Box> ) : ( <Grid container spacing={3} mb={4}> {joinedGroups.map(group => ( <Grid item xs={12} sm={6} key={group._id}> <GroupCard group={group} isOwner={false} onLeave={handleLeaveGroup} onClick={() => handleGroupCardClick(group)} /> </Grid> ))} </Grid> )}
-                        <Typography variant="h6" color={COLORS.textPrimary} my={3}> Group Actions </Typography>
-                        <Grid container spacing={3} mb={4}>
-                            <Grid item xs={12} sm={6}>
-                                <Card sx={{ bgcolor: COLORS.cardBackground, borderRadius: 4, boxShadow: 3 }}>
-                                    <CardContent>
-                                        <Typography variant="h6" fontWeight={700} color={COLORS.primary} gutterBottom> Join Existing Group </Typography>
-                                        <Typography variant="body2" color={COLORS.textPrimary}> Use an invite code to join a friend's group. </Typography>
-                                        <JoinGroupForm token={token} onGroupChange={handleGroupChange} />
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-                        </Grid>
-                    </Box>
-                )}
-            </Box>
-            <Box sx={{ width: EVENT_PANEL_WIDTH, bgcolor: COLORS.sidebarBackground, p: 3, borderLeft: `2px solid ${COLORS.cardBackground}` }}>
-                <Typography variant="h6" fontWeight={700} color={COLORS.primary} sx={{ mb: 1 }}> <EventIcon sx={{ mr: 1 }} /> Events & Calendar </Typography>
-                <StaticDatePicker orientation="portrait" defaultValue={moment()} readOnly />
-            </Box>
-            <GroupDetailsModal open={groupDetailsModalOpen} onClose={() => setGroupDetailsModalOpen(false)} group={selectedGroupForDetails} token={token} onSwipeRedirect={handleGoToSwipe} />
-            <CreateGroup open={createGroupOpen} onClose={() => setCreateGroupOpen(false)} token={token} onGroupChange={handleGroupChange} />
+      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: COLORS.background }}>
+        <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar />
+        <Sidebar username={currentUser.name} onLogout={handleLogout} onOpenFriends={() => setFriendsModalOpen(true)} />
+        
+        <Box sx={{ display: 'flex', flexGrow: 1, ml: '280px' }}>
+          <Box sx={{ flexGrow: 1, p: 4, overflowY: 'auto' }}>
+            <Stack direction="row" spacing={2} mb={4}>
+              <Button variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLORS.primary, '&:hover': { bgcolor: '#E56D62' } }} onClick={() => setCreateGroupOpen(true)}>
+                Schedule Event
+              </Button>
+            </Stack>
+             
+            <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} sx={{ mb: 2, '& .MuiTabs-indicator': { backgroundColor: COLORS.primary }, '& .Mui-selected': { color: COLORS.primary } }}>
+              <Tab label="My Events" value="myGroups" />
+              <Tab label="Joined Events" value="joinedGroups" />
+            </Tabs>
+            
+            {activeTab === 'myGroups' && renderGroupGrid(createdGroups, true)}
+            {activeTab === 'joinedGroups' && renderGroupGrid(joinedGroups, false)}
+          </Box>
+          
+          <Box sx={{ width: 340, flexShrink: 0, p: 2, borderLeft: '1px solid #f0f0f0', bgcolor: 'white' }}>
+            <Typography variant="h6" fontWeight={700} color={COLORS.primary} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <EventIcon /> Events Calendar
+            </Typography>
+            <StaticDatePicker orientation="portrait" defaultValue={moment()} readOnly sx={{'.MuiPickersDay-root.Mui-selected': {backgroundColor: COLORS.primary}}}/>
+             <Card sx={{ mt: 2 }}>
+               <CardContent>
+                 <Typography variant="h6" gutterBottom>Join an Event</Typography>
+                 <JoinGroupForm token={token} onGroupChange={handleGroupChange} />
+               </CardContent>
+             </Card>
+          </Box>
         </Box>
+
+        <FriendsListModal open={friendsModalOpen} onClose={() => setFriendsModalOpen(false)} friends={friendsList} />
+        <GroupDetailsModal open={groupDetailsModalOpen} onClose={() => setGroupDetailsModalOpen(false)} group={selectedGroupForDetails} onSwipeRedirect={handleGoToSwipe} />
+        <CreateGroup open={createGroupOpen} onClose={() => setCreateGroupOpen(false)} token={token} onGroupChange={handleGroupChange} />
+      </Box>
     </LocalizationProvider>
   );
+};
+
+const JoinGroupForm = ({ token, onGroupChange }) => {
+    const [inviteCode, setInviteCode] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleJoinGroup = async () => {
+        if (!inviteCode.trim()) return toast.error('Please enter an invite code');
+        setLoading(true);
+        try {
+            const res = await api.post('/api/group/join', { code: inviteCode.toUpperCase() });
+            toast.success(`Joined group: ${res.data.group.name}`);
+            onGroupChange();
+            setInviteCode('');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to join group');
+        } finally {
+            setLoading(false);
+        }
+    };
+    return (
+        <Stack spacing={1}>
+            <TextField fullWidth label="Invite Code" size="small" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} />
+            <Button fullWidth variant="contained" onClick={handleJoinGroup} disabled={loading} sx={{ bgcolor: COLORS.primary, '&:hover': { bgcolor: '#E56D62' } }}>
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Join'}
+            </Button>
+        </Stack>
+    );
 };
 
 export default Dashboard;

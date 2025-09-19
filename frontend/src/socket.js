@@ -1,11 +1,18 @@
 import { io } from 'socket.io-client';
 
-// Define the URL of your backend server
-const SERVER_URL = 'http://localhost:5000';
+const SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
-// Create the socket instance
+// Pass the auth token when connecting
 const socket = io(SERVER_URL, {
-  autoConnect: false // We will connect manually when the user enters the swipe screen
+  autoConnect: false,
+  auth: {
+    token: localStorage.getItem('token')
+  }
 });
+
+// ✅ ADD: A function to update the token if the user logs in/out
+export const updateSocketToken = () => {
+    socket.auth.token = localStorage.getItem('token');
+};
 
 export default socket;

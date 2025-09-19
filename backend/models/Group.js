@@ -22,23 +22,25 @@ const groupSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  // ✅ MODIFIED: location is now a top-level field
   location: {
     type: String,
     required: [true, 'Location is required for restaurant searches.'],
     trim: true
   },
-  // ✅ ADDED: radius is now a required, top-level field
   radius: {
     type: Number,
     required: [true, 'Search radius is required.'],
     min: 1,
     max: 50
   },
-  // ✅ RENAMED: To match the backend route logic
   cuisinePreferences: [{
     type: String
   }],
+  // ✅ ADDED: A new field to store the date of the event.
+  eventDate: {
+    type: Date,
+    required: false
+  },
   joinCode: {
     type: String,
     required: true,
