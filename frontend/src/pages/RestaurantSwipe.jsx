@@ -14,7 +14,7 @@ import ChatDrawer from '../components/ChatDrawer';
 const COLORS = {
   primary: '#FF7F7F',
   secondary: '#FFD6B0',
-  // ✅ CHANGED: New lighter background color
+
   background: '#FFF4F4', 
   textPrimary: '#575761',
   cardBackground: '#FFFFFF',
@@ -221,7 +221,7 @@ const RestaurantSwipe = () => {
         </Typography>
         <Fab 
           onClick={() => setIsChatOpen(true)}
-          // ✅ CHANGED: Larger size and updated color scheme
+      
           sx={{ 
             bgcolor: COLORS.primary, 
             color: 'white',

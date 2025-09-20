@@ -8,7 +8,7 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 
-// Middleware
+// Use the environment variable for CORS
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true,
@@ -16,38 +16,21 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error(err));
 
+// Use the environment variable for Socket.IO CORS
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
     methods: ["GET", "POST"]
   }
 });
 
-// Make io accessible to your routes
 app.set('socketio', io);
 
-// Socket.io only needs to manage rooms now
-io.on('connection', (socket) => {
-  console.log('✅ A user connected:', socket.id);
-
-  socket.on('joinGroup', (groupId) => {
-    socket.join(groupId);
-    console.log(`User ${socket.id} joined group room: ${groupId}`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('❌ User disconnected:', socket.id);
-  });
-});
-// ... (Your existing server setup: express, http, cors, etc.)
-
-// ✅ ADDED: In-memory storage for live vote counts for the async model
 const groupVotes = {}; 
 
 io.on('connection', (socket) => {
@@ -56,29 +39,24 @@ io.on('connection', (socket) => {
   socket.on('joinGroup', (groupId) => {
     socket.join(groupId);
     console.log(`User ${socket.id} joined group room: ${groupId}`);
-    // When a new user joins, send them the current vote counts
     socket.emit('voteUpdate', groupVotes[groupId] || {});
   });
 
-  // ✅ ADDED: Handler for right swipes
   socket.on('userSwipedRight', ({ groupId, restaurantId }) => {
     if (!groupVotes[groupId]) groupVotes[groupId] = {};
     groupVotes[groupId][restaurantId] = (groupVotes[groupId][restaurantId] || 0) + 1;
-    // Broadcast the new vote counts to everyone in the group
     io.in(groupId).emit('voteUpdate', groupVotes[groupId]);
   });
   
-  // ✅ ADDED: Handler for chat messages
   socket.on('sendMessage', (messageData) => {
-    // Broadcast the message to everyone else in the group room
-    // The 'sender' will be overwritten by the server with the user's actual name if you have that data
     socket.to(messageData.groupId).emit('receiveMessage', messageData);
   });
 
-  socket.on('disconnect', () => { /* ... */ });
+  socket.on('disconnect', () => {
+    console.log('❌ User disconnected:', socket.id);
+  });
 });
 
-// ... (Rest of your server.js: routes, server.listen)
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/group', require('./routes/group'));
