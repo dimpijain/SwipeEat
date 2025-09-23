@@ -61,7 +61,7 @@ io.on('connection', (socket) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/group', require('./routes/group'));
 app.use('/api/swipes', require('./routes/swipes'));
-
+app.use('/api/restaurants', require('./routes/restaurants'));
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

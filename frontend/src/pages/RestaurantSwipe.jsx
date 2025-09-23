@@ -8,13 +8,11 @@ import { Close, Favorite, ArrowBack, Star, CheckCircleOutline, Fastfood, ThumbUp
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/ReactToastify.css';
-import { getNearbyRestaurants, getRestaurantDetails } from '../services/googleApiService';
 import ChatDrawer from '../components/ChatDrawer';
 
 const COLORS = {
   primary: '#FF7F7F',
   secondary: '#FFD6B0',
-
   background: '#FFF4F4', 
   textPrimary: '#575761',
   cardBackground: '#FFFFFF',
@@ -67,21 +65,17 @@ const RestaurantSwipe = () => {
       setLoading(true);
       setError(null);
       try {
-        const groupRes = await api.get(`/api/group/${groupId}`);
-        const { location, radius } = groupRes.data.group;
-        if (!location || !radius) throw new Error("Group details are incomplete.");
+        const response = await api.get(`/api/restaurants/for-group/${groupId}`);
         
-        const googleRestaurants = await getNearbyRestaurants(location, radius); 
+        const googleRestaurants = response.data;
         const alreadySwipedRes = await api.get(`/api/swipes/user/${groupId}`);
         const swipedIds = new Set(alreadySwipedRes.data.swipes.map(s => s.restaurantId));
 
         const filteredRestaurants = googleRestaurants.filter(r => !swipedIds.has(r.id));
-        const reversedRestaurants = [...filteredRestaurants].reverse();
-
-        setRestaurants(reversedRestaurants);
-        setCurrentIndex(reversedRestaurants.length - 1);
+        setRestaurants(filteredRestaurants.reverse());
+        setCurrentIndex(filteredRestaurants.length - 1);
       } catch (err) {
-        setError(err.message || 'Could not fetch restaurants.');
+        setError(err.response?.data?.message || 'Could not fetch restaurants.');
       } finally {
         setLoading(false);
       }
@@ -108,11 +102,10 @@ const RestaurantSwipe = () => {
     setDetailsLoading(true);
     setDetailsModalOpen(true);
     try {
-      const details = await getRestaurantDetails(restaurantId);
-      setSelectedRestaurantDetails(details);
+      const response = await api.get(`/api/restaurants/details/${restaurantId}`);
+      setSelectedRestaurantDetails(response.data);
     } catch (err) {
       toast.error('Failed to load restaurant details.');
-      console.error("Failed to fetch restaurant details:", err);
       setSelectedRestaurantDetails(null);
     } finally {
       setDetailsLoading(false);
@@ -168,7 +161,7 @@ const RestaurantSwipe = () => {
         </TinderCard>
       )
     ));
-  }, [restaurants, currentIndex, loading, error, votes, navigate, handleCardClick]);
+  }, [restaurants, currentIndex, loading, error, votes, navigate]);
 
   return (
     <Box sx={{
@@ -221,7 +214,6 @@ const RestaurantSwipe = () => {
         </Typography>
         <Fab 
           onClick={() => setIsChatOpen(true)}
-      
           sx={{ 
             bgcolor: COLORS.primary, 
             color: 'white',
