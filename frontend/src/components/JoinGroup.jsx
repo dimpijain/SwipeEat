@@ -4,13 +4,12 @@ import {
   Button, 
   TextField, 
   Typography, 
-  Alert,
   CircularProgress
 } from '@mui/material';
-import axios from 'axios';
 import { toast } from 'react-toastify';
+import api from '../api'; 
 
-const JoinGroup = ({ token, onJoinSuccess }) => {
+const JoinGroup = ({ onJoinSuccess }) => {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,16 +22,8 @@ const JoinGroup = ({ token, onJoinSuccess }) => {
     setLoading(true);
     
     try {
-      const res = await axios.post(
-        'http://localhost:5000/api/group/join', 
-        { code: code.toUpperCase() }, 
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      
+      const res = await api.post('/api/group/join', { code: code.toUpperCase() });
 
       if (res.data.success) {
         toast.success(`Successfully joined group: ${res.data.group.name}`);

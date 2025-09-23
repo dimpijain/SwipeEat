@@ -78,7 +78,7 @@ const MatchScreen = () => {
         sx={{ 
           p: { xs: 4, sm: 6 }, 
           borderRadius: 5, 
-          // ✅ CHANGED: Increased max-width to make the box larger
+          
           maxWidth: '650px', 
           width: '100%',
           bgcolor: 'white', 

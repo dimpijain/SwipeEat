@@ -7,7 +7,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import PeopleIcon from '@mui/icons-material/People';
 
 const FriendsListModal = ({ open, onClose, friends }) => {
-  // Helper to get initials from a name
+
   const getInitials = (name) => {
     if (!name) return '?';
     const names = name.split(' ');

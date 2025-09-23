@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React from 'react';
+import { useState } from 'react';
+import api from '../api'; 
 
 const SignInModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [email, setEmail] = useState('');
@@ -15,16 +16,17 @@ const SignInModal = ({ isOpen, onClose, onLoginSuccess }) => {
     setError('');
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+     
+      const res = await api.post('/api/auth/login', { email, password });
+      
       const token = res.data.token;
-      // Save token in localStorage or context
       localStorage.setItem('token', token);
       setLoading(false);
       onLoginSuccess();
       onClose();
     } catch (err) {
       setLoading(false);
-      setError(err.response?.data?.msg || 'Login failed');
+      setError(err.response?.data?.message || 'Login failed');
     }
   };
 

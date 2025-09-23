@@ -23,7 +23,7 @@ const CreateGroup = ({ open, onClose, onGroupChange }) => {
   const [location, setLocation] = useState('');
   const [radius, setRadius] = useState(5);
   const [cuisinePreferences, setCuisinePreferences] = useState([]);
-  // ✅ ADDED: State for the event date
+
   const [eventDate, setEventDate] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +54,7 @@ const CreateGroup = ({ open, onClose, onGroupChange }) => {
           location,
           radius,
           cuisinePreferences,
-          eventDate: eventDate ? eventDate.toISOString() : null, // ✅ ADDED: Include eventDate in payload
+          eventDate: eventDate ? eventDate.toISOString() : null, 
         }
       );
       if (response.data.success) {
@@ -76,7 +76,7 @@ const CreateGroup = ({ open, onClose, onGroupChange }) => {
         Schedule a New Event
       </DialogTitle>
       <DialogContent>
-        {/* ✅ ADDED: Date Picker for scheduling the event */}
+       
         <DatePicker
           label="Event Date (Optional)"
           value={eventDate}

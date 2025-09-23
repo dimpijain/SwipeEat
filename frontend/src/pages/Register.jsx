@@ -8,11 +8,11 @@ import {
   Link,
   CircularProgress,
   InputAdornment,
-  Alert, // ✅ ADDED: Import Alert
-  IconButton // ✅ ADDED: Import IconButton
+  Alert,  
+  IconButton 
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-// ✅ ADDED: Import ArrowBack and other icons
+import api from '../api';
 import { Person, Email, Lock, Restaurant, ArrowBack } from '@mui/icons-material';
 
 const COLORS = {
@@ -34,17 +34,8 @@ const useRegister = () => {
     setError(null);
     
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
+      
+      await api.post('/api/auth/register', formData);
 
       navigate('/login', { 
         state: { 
@@ -53,7 +44,8 @@ const useRegister = () => {
         } 
       });
     } catch (err) {
-      setError(err.message);
+
+      setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

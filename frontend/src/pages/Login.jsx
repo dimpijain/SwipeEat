@@ -7,13 +7,12 @@ import {
   Paper, 
   Link,
   CircularProgress,
-  IconButton // ✅ ADDED: Import IconButton
+  IconButton,
+  Alert
 } from '@mui/material';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-// ✅ ADDED: Import ArrowBack and other icons
 import { Lock, Email, ArrowBack } from '@mui/icons-material';
-
+import api from '../api'; 
 const useLogin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,7 +23,8 @@ const useLogin = () => {
     setError(null);
     
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+     
+      const response = await api.post('/api/auth/login', {
         email,
         password,
       });
@@ -90,10 +90,9 @@ const LoginForm = ({ onLogin, loading, error }) => {
     <Paper
       elevation={3}
       sx={{
-        // ✅ CHANGED: Increased padding and max-width for a larger box
-        p: 7,
+        p: { xs: 4, sm: 5 },
         borderRadius: 4,
-        maxWidth: 600,
+        maxWidth: 500,
         width: '100%',
         bgcolor: 'white',
         boxShadow: '0 10px 25px rgba(0,0,0,0.05)'
@@ -173,10 +172,9 @@ const Login = () => {
         justifyContent: 'center',
         bgcolor: COLORS.background,
         p: 2,
-        position: 'relative' // Needed for absolute positioning of the button
+        position: 'relative' 
       }}
     >
-      {/* ✅ ADDED: Back to homepage button */}
       <IconButton 
         onClick={() => navigate('/')}
         sx={{

@@ -11,7 +11,7 @@ const ChatDrawer = ({ groupId, isOpen, onClose }) => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    // Automatically scroll to the bottom when new messages arrive
+    
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -34,7 +34,7 @@ const ChatDrawer = ({ groupId, isOpen, onClose }) => {
       const messageData = {
         groupId,
         text: newMessage,
-        sender: 'Me', // The server can replace this with the actual user's name
+        sender: 'Me', 
       };
       // Send the message to the server
       socket.emit('sendMessage', messageData);

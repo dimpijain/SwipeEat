@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+// ✅ REMOVED: Unused 'axios' import
 import {
   Box,
   Typography,
@@ -10,6 +10,7 @@ import {
   Link as MuiLink,
 } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../api';
 
 const LoginModal = ({ onClose, onLoginSuccess }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -26,16 +27,12 @@ const LoginModal = ({ onClose, onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        'http://localhost:5000/api/auth/login',
+
+      const res = await api.post(
+        '/api/auth/login',
         {
           email: formData.email.trim(),
           password: formData.password,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
         }
       );
 
@@ -43,17 +40,11 @@ const LoginModal = ({ onClose, onLoginSuccess }) => {
         localStorage.setItem('token', res.data.token);
         onLoginSuccess(res.data);
         onClose();
-        navigate('/dashboard'); // Redirect to dashboard after login
+        navigate('/dashboard'); 
       } else {
         throw new Error('Authentication failed: No token received');
       }
     } catch (err) {
-      console.error('Full error details:', {
-        message: err.message,
-        response: err.response?.data,
-        config: err.config,
-      });
-
       setError(
         err.response?.data?.message ||
           err.response?.data?.error ||
